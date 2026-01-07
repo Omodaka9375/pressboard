@@ -1,8 +1,10 @@
 # PressBoard
+<img width="468" height="465" alt="pressboard" src="https://github.com/user-attachments/assets/e2a0e9f6-f0ae-4468-b1a2-bb194f3beb97" />
 
 **PressBoard** is a web‑based PCB design tool for creating 3D‑printable circuit boards with copper tape channels and modular enclosures. It combines intuitive layout, intelligent auto‑assembly, and real‑time 3D visualization to make solder‑free electronics design accessible to makers, educators, and rapid prototypers.
 
 ---
+
 
 ## ✨ Key Features
 
