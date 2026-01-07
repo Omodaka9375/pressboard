@@ -1,0 +1,200 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.app-logo {
+  height: 28px;
+}
+
+/* Invert logo for light theme (logo is white by default) */
+:root .app-logo {
+  filter: invert(1);
+}
+
+[data-theme='dark'] .app-logo {
+  filter: none;
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar-left,
+.sidebar-right {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+}
+
+.sidebar-left {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+/* Custom scrollbar for left sidebar */
+.sidebar-left::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-left::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-left::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 100, 0.4);
+  border-radius: 3px;
+}
+
+.sidebar-left::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.6);
+}
+
+.sidebar-right {
+  width: 320px;
+  flex-shrink: 0;
+  border-right: none;
+  border-left: 1px solid var(--border-color);
+  color: var(--text-primary);
+  transition: width 0.2s ease, min-width 0.2s ease;
+}
+
+.sidebar-right.collapsed {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-left: none;
+}
+
+.sidebar-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.main-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.view-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.view-tab {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.view-tab:hover {
+  background: var(--btn-hover);
+  color: var(--text-primary);
+}
+
+.view-tab.active {
+  background: var(--bg-secondary);
+  color: var(--accent-color);
+  border-bottom: 2px solid var(--accent-color);
+}
+
+.view-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.canvas-container {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.three-fullscreen {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.app-footer {
+  padding: 10px 20px;
+  background: var(--bg-sidebar);
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Sidebar collapse toggle */
+.sidebar-toggle {
+  position: absolute;
+  top: 50%;
+  left: -22px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-secondary);
+  z-index: 10;
+}
+
+.sidebar-toggle:hover {
+  background: var(--btn-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-right-wrapper {
+  position: relative;
+  display: flex;
+}
