@@ -114,24 +114,24 @@ const Resistor3D = ({
   const rotRad = (rotation * Math.PI) / 180;
   return (
     <group position={position} rotation={[0, 0, rotRad]}>
-      {/* Body */}
-      <mesh position={[0, 0, 1.5]}>
+      {/* Body - horizontal along Y axis */}
+      <mesh position={[0, 0, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[1.2, 1.2, 7, 16]} />
         <meshStandardMaterial color="#c4a484" roughness={0.6} />
       </mesh>
-      {/* Color bands */}
-      {[-2.5, -1.5, -0.5, 1.5].map((_, i) => (
-        <mesh key={i} position={[0, 0, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+      {/* Color bands - positioned along the body */}
+      {[-2.5, -1.5, -0.5, 1.5].map((yOffset, i) => (
+        <mesh key={i} position={[0, yOffset, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
           <torusGeometry args={[1.21, 0.15, 8, 16]} />
           <meshStandardMaterial color={['#a52a2a', '#000000', '#ff8c00', '#ffd700'][i]} />
         </mesh>
       ))}
-      {/* Leads */}
-      <mesh position={[0, 0, -2]} rotation={[Math.PI / 2, 0, 0]}>
+      {/* Leads - extending from both ends */}
+      <mesh position={[0, -5.5, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.3, 0.3, 4, 8]} />
         <meshStandardMaterial color="#888888" metalness={0.8} roughness={0.2} />
       </mesh>
-      <mesh position={[0, 0, 5]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[0, 5.5, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.3, 0.3, 4, 8]} />
         <meshStandardMaterial color="#888888" metalness={0.8} roughness={0.2} />
       </mesh>
@@ -150,28 +150,28 @@ const Capacitor3D = ({
   const rotRad = (rotation * Math.PI) / 180;
   return (
     <group position={position} rotation={[0, 0, rotRad]}>
-      {/* Body - electrolytic cap style */}
-      <mesh position={[0, 0, 4]}>
+      {/* Body - electrolytic cap style, upright */}
+      <mesh position={[0, 0, 4]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[2.5, 2.5, 6, 20]} />
         <meshStandardMaterial color="#1a1a3a" roughness={0.4} />
       </mesh>
       {/* Top marking */}
-      <mesh position={[0, 0, 7.1]}>
+      <mesh position={[0, 0, 7.1]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[2.4, 2.4, 0.2, 20]} />
         <meshStandardMaterial color="#333355" roughness={0.5} />
       </mesh>
       {/* Stripe */}
-      <mesh position={[2.3, 0, 4]} rotation={[0, 0, Math.PI / 2]}>
-        <boxGeometry args={[6, 0.5, 0.3]} />
+      <mesh position={[2.3, 0, 4]}>
+        <boxGeometry args={[0.3, 0.5, 6]} />
         <meshStandardMaterial color="#cccccc" />
       </mesh>
-      {/* Leads */}
-      <mesh position={[-1.25, 0, -1]}>
-        <cylinderGeometry args={[0.25, 0.25, 3, 8]} />
+      {/* Leads - going down through board */}
+      <mesh position={[-1.25, 0, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.25, 0.25, 2, 8]} />
         <meshStandardMaterial color="#888888" metalness={0.8} />
       </mesh>
-      <mesh position={[1.25, 0, -1]}>
-        <cylinderGeometry args={[0.25, 0.25, 3, 8]} />
+      <mesh position={[1.25, 0, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.25, 0.25, 2, 8]} />
         <meshStandardMaterial color="#888888" metalness={0.8} />
       </mesh>
     </group>
@@ -191,8 +191,8 @@ const LED3D = ({
   const rotRad = (rotation * Math.PI) / 180;
   return (
     <group position={position} rotation={[0, 0, rotRad]}>
-      {/* Dome */}
-      <mesh position={[0, 0, 4]}>
+      {/* Dome - hemisphere on top */}
+      <mesh position={[0, 0, 4]} rotation={[-Math.PI / 2, 0, 0]}>
         <sphereGeometry args={[2.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshStandardMaterial
           color={color}
@@ -202,23 +202,23 @@ const LED3D = ({
           emissiveIntensity={0.3}
         />
       </mesh>
-      {/* Base */}
-      <mesh position={[0, 0, 2]}>
-        <cylinderGeometry args={[2.5, 2.5, 2, 16]} />
+      {/* Base - cylindrical body */}
+      <mesh position={[0, 0, 2.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[2.5, 2.5, 3, 16]} />
         <meshStandardMaterial color={color} transparent opacity={0.6} />
       </mesh>
-      {/* Rim */}
-      <mesh position={[0, 0, 1]}>
+      {/* Rim - flange at bottom */}
+      <mesh position={[0, 0, 0.75]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[2.8, 2.8, 0.5, 16]} />
         <meshStandardMaterial color="#888888" metalness={0.5} />
       </mesh>
-      {/* Leads */}
-      <mesh position={[-0.6, 0, -1]}>
-        <cylinderGeometry args={[0.25, 0.25, 3, 8]} />
+      {/* Leads - going down */}
+      <mesh position={[-0.6, 0, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.25, 0.25, 1.5, 8]} />
         <meshStandardMaterial color="#888888" metalness={0.8} />
       </mesh>
-      <mesh position={[0.6, 0, -1]}>
-        <cylinderGeometry args={[0.25, 0.25, 3, 8]} />
+      <mesh position={[0.6, 0, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.25, 0.25, 1.5, 8]} />
         <meshStandardMaterial color="#888888" metalness={0.8} />
       </mesh>
     </group>
@@ -335,15 +335,23 @@ const MCUBoard3D = ({
           <meshStandardMaterial color="#1a1a1a" />
         </mesh>
       ))}
-      {/* Gold pins */}
+      {/* Gold pins - upright */}
       {Array.from({ length: pinsPerSide }).map((_, i) => (
-        <mesh key={`pin-left-${i}`} position={[0, i * pinSpacing, 0]}>
+        <mesh
+          key={`pin-left-${i}`}
+          position={[0, i * pinSpacing, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
           <cylinderGeometry args={[0.4, 0.4, 3, 8]} />
           <meshStandardMaterial color="#d4af37" metalness={0.8} />
         </mesh>
       ))}
       {Array.from({ length: pinsPerSide }).map((_, i) => (
-        <mesh key={`pin-right-${i}`} position={[width - 2.54, i * pinSpacing, 0]}>
+        <mesh
+          key={`pin-right-${i}`}
+          position={[width - 2.54, i * pinSpacing, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
           <cylinderGeometry args={[0.4, 0.4, 3, 8]} />
           <meshStandardMaterial color="#d4af37" metalness={0.8} />
         </mesh>
@@ -372,13 +380,13 @@ const AudioJack3D = ({
         <boxGeometry args={[12 * scale, 6 * scale, 5 * scale]} />
         <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
       </mesh>
-      {/* Jack opening */}
-      <mesh position={[11 * scale, 1.5 * scale, 3 * scale]} rotation={[0, 0, Math.PI / 2]}>
+      {/* Jack opening - facing outward along X axis */}
+      <mesh position={[11.5 * scale, 1.5 * scale, 3 * scale]} rotation={[0, Math.PI / 2, 0]}>
         <cylinderGeometry args={[2 * scale, 2 * scale, 2, 16]} />
         <meshStandardMaterial color="#333333" />
       </mesh>
-      {/* Metal ring */}
-      <mesh position={[12 * scale, 1.5 * scale, 3 * scale]} rotation={[0, 0, Math.PI / 2]}>
+      {/* Metal ring - around the opening */}
+      <mesh position={[12.5 * scale, 1.5 * scale, 3 * scale]} rotation={[0, Math.PI / 2, 0]}>
         <torusGeometry args={[2.2 * scale, 0.3, 8, 16]} />
         <meshStandardMaterial color="#888888" metalness={0.8} />
       </mesh>
@@ -405,8 +413,8 @@ const Button3D = ({
         <boxGeometry args={[size, size, 3]} />
         <meshStandardMaterial color="#2a2a2a" roughness={0.6} />
       </mesh>
-      {/* Button cap */}
-      <mesh position={[size / 2, size / 2, 4]}>
+      {/* Button cap - upright cylinder */}
+      <mesh position={[size / 2, size / 2, 4]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[size / 3, size / 3, 2, 16]} />
         <meshStandardMaterial color="#444444" roughness={0.5} />
       </mesh>
@@ -428,19 +436,19 @@ const Potentiometer3D = ({
 
   return (
     <group position={position} rotation={[0, 0, rotRad]}>
-      {/* Body */}
-      <mesh position={[2.5, 2.5, 2]}>
+      {/* Body - upright cylinder */}
+      <mesh position={[2.5, 2.5, 2]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[size / 2, size / 2, 4, 20]} />
         <meshStandardMaterial color="#3d3d3d" roughness={0.7} />
       </mesh>
-      {/* Shaft */}
-      <mesh position={[2.5, 2.5, 7]}>
+      {/* Shaft - upright */}
+      <mesh position={[2.5, 2.5, 7]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[3, 3, 6, 16]} />
         <meshStandardMaterial color="#888888" metalness={0.7} />
       </mesh>
-      {/* Knob indicator */}
-      <mesh position={[2.5, 4.5, 10]}>
-        <boxGeometry args={[0.5, 2, 0.5]} />
+      {/* Knob indicator - on top of shaft */}
+      <mesh position={[2.5, 4.5, 10.5]}>
+        <boxGeometry args={[0.5, 2, 1]} />
         <meshStandardMaterial color="#ffffff" />
       </mesh>
     </group>
@@ -474,9 +482,9 @@ const Encoder3D = ({
         <cylinderGeometry args={[3, 3, 6, 20]} />
         <meshStandardMaterial color="#777777" metalness={0.7} roughness={0.4} />
       </mesh>
-      {/* D-shaft flat indicator */}
-      <mesh position={[2.5, 5.2, 9]} rotation={[Math.PI / 2, 0, 0]}>
-        <boxGeometry args={[1, 6, 0.8]} />
+      {/* D-shaft flat indicator - on side of shaft */}
+      <mesh position={[2.5, 5.8, 9]}>
+        <boxGeometry args={[1, 0.8, 6]} />
         <meshStandardMaterial color="#666666" metalness={0.6} />
       </mesh>
     </group>
@@ -530,25 +538,25 @@ const MIDIDIN3D = ({
 
   return (
     <group position={position} rotation={[0, 0, rotRad]}>
-      {/* Housing */}
-      <mesh position={[2.54, 2.54, 4]}>
+      {/* Housing - upright cylinder */}
+      <mesh position={[2.54, 2.54, 4]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[6, 6, 8, 20]} />
         <meshStandardMaterial color="#333333" roughness={0.6} />
       </mesh>
-      {/* Face plate */}
-      <mesh position={[2.54, 2.54, 8.1]}>
+      {/* Face plate - on top */}
+      <mesh position={[2.54, 2.54, 8.1]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[5.5, 5.5, 0.2, 20]} />
         <meshStandardMaterial color="#444444" />
       </mesh>
-      {/* Pin holes */}
+      {/* Pin holes - arranged in arc pattern on face */}
       {[
-        [0, 0],
-        [2.54, 2.54],
-        [5.08, 0],
-        [0, 5.08],
-        [5.08, 5.08],
+        [0, -2],
+        [0, 2],
+        [-2, -1],
+        [-2, 1],
+        [2, 0],
       ].map(([x, y], i) => (
-        <mesh key={i} position={[x, y, 8.2]}>
+        <mesh key={i} position={[2.54 + x, 2.54 + y, 8.3]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.6, 0.6, 0.3, 8]} />
           <meshStandardMaterial color="#111111" />
         </mesh>
@@ -581,12 +589,13 @@ const LEDMatrix3D = ({
         <boxGeometry args={[size - 4, size - 4, 2]} />
         <meshStandardMaterial color="#1a1a1a" />
       </mesh>
-      {/* LEDs (8x8 grid simplified) */}
+      {/* LEDs (8x8 grid simplified) - upright cylinders */}
       {Array.from({ length: 8 }).map((_, row) =>
         Array.from({ length: 8 }).map((_, col) => (
           <mesh
             key={`${row}-${col}`}
             position={[4 + (col * (size - 8)) / 7, 4 + (row * (size - 8)) / 7, 3.1]}
+            rotation={[Math.PI / 2, 0, 0]}
           >
             <cylinderGeometry args={[1, 1, 0.2, 8]} />
             <meshStandardMaterial
@@ -619,15 +628,15 @@ const HeaderPin3D = ({
   return (
     <group position={position} rotation={[0, 0, rotRad]}>
       {/* Plastic housing */}
-      <mesh position={[((cols - 1) * spacing) / 2, ((rows - 1) * spacing) / 2, 1.5]}>
+      <mesh position={[((cols - 1) * spacing) / 2, ((rows - 1) * spacing) / 2, 1.25]}>
         <boxGeometry args={[cols * spacing, rows * spacing, 2.5]} />
         <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
       </mesh>
-      {/* Pins */}
+      {/* Pins - centered in housing, extending up and down */}
       {Array.from({ length: rows }).map((_, row) =>
         Array.from({ length: cols }).map((_, col) => (
-          <mesh key={`${row}-${col}`} position={[col * spacing, row * spacing, 3]}>
-            <boxGeometry args={[0.6, 0.6, 8]} />
+          <mesh key={`${row}-${col}`} position={[col * spacing, row * spacing, 2]}>
+            <boxGeometry args={[0.6, 0.6, 9]} />
             <meshStandardMaterial color="#d4af37" metalness={0.8} roughness={0.2} />
           </mesh>
         ))
@@ -656,9 +665,9 @@ const Switch3D = ({
         <boxGeometry args={[width, 6, 4]} />
         <meshStandardMaterial color="#2a2a2a" roughness={0.7} />
       </mesh>
-      {/* Lever */}
-      <mesh position={[1, 0, 5]} rotation={[0.3, 0, 0]}>
-        <boxGeometry args={[2, 1, 4]} />
+      {/* Lever - tilted forward */}
+      <mesh position={[width / 2 - 2.5, 0.5, 5.5]} rotation={[0.4, 0, 0]}>
+        <boxGeometry args={[2, 4, 1]} />
         <meshStandardMaterial color="#888888" metalness={0.5} />
       </mesh>
     </group>
@@ -685,13 +694,13 @@ const Connector3D = ({
           <boxGeometry args={[10, 8, 8]} />
           <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
         </mesh>
-        {/* Jack opening */}
-        <mesh position={[8, 2, 4]} rotation={[0, 0, Math.PI / 2]}>
+        {/* Jack opening - facing outward */}
+        <mesh position={[8.5, 2, 4]} rotation={[0, Math.PI / 2, 0]}>
           <cylinderGeometry args={[3, 3, 2, 16]} />
           <meshStandardMaterial color="#333333" />
         </mesh>
         {/* Center pin */}
-        <mesh position={[8, 2, 4]} rotation={[0, 0, Math.PI / 2]}>
+        <mesh position={[8.5, 2, 4]} rotation={[0, Math.PI / 2, 0]}>
           <cylinderGeometry args={[1, 1, 4, 8]} />
           <meshStandardMaterial color="#888888" metalness={0.7} />
         </mesh>
@@ -853,17 +862,24 @@ const Component3D = ({ component, boardThickness }: Component3DProps) => {
   // Potentiometers
   if (type.startsWith('pot_')) {
     if (type === 'pot_slide_45mm') {
-      // Slide pot - simplified
+      // Slide pot - horizontal track with slider
       const rotRad = (component.rotation * Math.PI) / 180;
       return (
         <group position={pos} rotation={[0, 0, rotRad]}>
-          <mesh position={[2.5, 20, 3]}>
-            <boxGeometry args={[8, 42, 5]} />
+          {/* Track housing */}
+          <mesh position={[2.5, 22.5, 2.5]}>
+            <boxGeometry args={[8, 45, 4]} />
             <meshStandardMaterial color="#2a2a2a" roughness={0.7} />
           </mesh>
-          <mesh position={[2.5, 20, 6]}>
-            <boxGeometry args={[4, 8, 3]} />
-            <meshStandardMaterial color="#666666" />
+          {/* Slot */}
+          <mesh position={[2.5, 22.5, 4.6]}>
+            <boxGeometry args={[2, 40, 0.3]} />
+            <meshStandardMaterial color="#111111" />
+          </mesh>
+          {/* Slider knob */}
+          <mesh position={[2.5, 22.5, 6]}>
+            <boxGeometry args={[6, 8, 4]} />
+            <meshStandardMaterial color="#666666" metalness={0.3} />
           </mesh>
         </group>
       );
@@ -901,7 +917,8 @@ const Component3D = ({ component, boardThickness }: Component3DProps) => {
     const isRing = type.includes('ring');
     return (
       <group position={pos} rotation={[0, 0, rotRad]}>
-        <mesh position={[2.54, 0, 1]}>
+        {/* PCB base - upright */}
+        <mesh position={[2.54, 0, 1]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[isRing ? 20 : 4, isRing ? 20 : 4, 2, 20]} />
           <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
         </mesh>
@@ -929,10 +946,10 @@ const Component3D = ({ component, boardThickness }: Component3DProps) => {
   }
 
   // Connectors
-  if (type === 'connector_barrel') {
+  if (type === 'connector_barrel' || type === 'connector_dc_barrel') {
     return <Connector3D position={pos} rotation={component.rotation} type="barrel" />;
   }
-  if (type === 'connector_usb') {
+  if (type === 'connector_usb' || type === 'connector_usb_b') {
     return <Connector3D position={pos} rotation={component.rotation} type="usb" />;
   }
 
@@ -958,7 +975,7 @@ const Component3D = ({ component, boardThickness }: Component3DProps) => {
         <meshStandardMaterial color="#4169E1" roughness={0.7} metalness={0.1} />
       </mesh>
       {footprint?.pads.map((pad, i) => (
-        <mesh key={i} position={[pad.pos[0], pad.pos[1], -0.1]}>
+        <mesh key={i} position={[pad.pos[0], pad.pos[1], -0.1]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[(pad.dia || 1.5) / 2, (pad.dia || 1.5) / 2, 0.2, 16]} />
           <meshStandardMaterial color="#B87333" metalness={0.6} roughness={0.3} />
         </mesh>
@@ -987,7 +1004,11 @@ const ViaMarkers = () => {
   return (
     <group position={[-centerX, -centerY, 0]}>
       {project.vias.map((via, index) => (
-        <mesh key={index} position={[via.pos[0], via.pos[1], project.board.thickness / 2]}>
+        <mesh
+          key={index}
+          position={[via.pos[0], via.pos[1], project.board.thickness / 2]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
           <cylinderGeometry args={[via.dia / 2, via.dia / 2, project.board.thickness + 0.2, 16]} />
           <meshStandardMaterial color="#333" />
         </mesh>
