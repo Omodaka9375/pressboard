@@ -7,6 +7,8 @@ import type {
   ArrangementOption,
   ArrangementMetrics,
   FootprintDefinition,
+  PlacementConstraint,
+  PlacementZone,
 } from '../../types';
 import { getFootprint } from '../../data/footprints';
 import { expandComponents } from '../../stores/autoAssemblyStore';
@@ -21,6 +23,7 @@ const BOARD_MARGIN = 10; // Min distance from board edge (mm)
 const MAX_OPTIMIZER_ITERATIONS = 500;
 const INITIAL_TEMP = 100;
 const COOLING_RATE = 0.95;
+const ROTATION_ANGLES = [0, 90, 180, 270]; // Possible orientations
 
 // =====================
 // TYPES
@@ -32,6 +35,8 @@ type PlacedComponent = {
   pos: Vec2;
   rotation: number;
   bounds: BoundingBox;
+  assemblyId?: string;
+  constraint?: PlacementConstraint;
 };
 
 type BoundingBox = {
@@ -44,6 +49,11 @@ type BoundingBox = {
 };
 
 type PlacementStrategy = 'grid' | 'compact' | 'symmetric' | 'flow' | 'radial';
+
+type PlacementOptions = {
+  constraints: PlacementConstraint[];
+  optimizeOrientation: boolean;
+};
 
 // =====================
 // BOUNDS CALCULATION
@@ -576,7 +586,8 @@ const direction = (p1: Vec2, p2: Vec2, p3: Vec2): number => {
 export const optimizePlacement = (
   initial: PlacedComponent[],
   connections: ConnectionDef[],
-  board: Board
+  board: Board,
+  optimizeOrientation: boolean = true
 ): PlacedComponent[] => {
   if (initial.length === 0) return initial;
 
@@ -593,13 +604,43 @@ export const optimizePlacement = (
     const neighbor = structuredClone(current);
     const idx = Math.floor(Math.random() * neighbor.length);
 
-    // Random move
-    const moveX = (Math.random() - 0.5) * 20;
-    const moveY = (Math.random() - 0.5) * 20;
-    neighbor[idx].pos = [
-      snapToGrid(neighbor[idx].pos[0] + moveX),
-      snapToGrid(neighbor[idx].pos[1] + moveY),
-    ];
+    // Skip locked components
+    if (neighbor[idx].constraint?.locked) {
+      continue;
+    }
+
+    // Decide: move or rotate
+    const doRotate = optimizeOrientation && Math.random() < 0.3;
+
+    if (doRotate) {
+      // Rotate component
+      const newRotation = ROTATION_ANGLES[Math.floor(Math.random() * ROTATION_ANGLES.length)];
+      if (newRotation !== neighbor[idx].rotation) {
+        const fp = getFootprint(neighbor[idx].type);
+        if (fp) {
+          neighbor[idx].rotation = newRotation;
+          neighbor[idx].bounds = calculateComponentBounds(fp, newRotation);
+        }
+      }
+    } else {
+      // Random move (constrained by zone if set)
+      let moveX = (Math.random() - 0.5) * 20;
+      let moveY = (Math.random() - 0.5) * 20;
+
+      // Respect zone constraints
+      const zone = neighbor[idx].constraint?.zone;
+      if (zone) {
+        const zoneTarget = getZoneCenter(zone, boardBounds);
+        // Bias movement toward zone center
+        moveX = (zoneTarget[0] - neighbor[idx].pos[0]) * 0.2 + moveX * 0.3;
+        moveY = (zoneTarget[1] - neighbor[idx].pos[1]) * 0.2 + moveY * 0.3;
+      }
+
+      neighbor[idx].pos = [
+        snapToGrid(neighbor[idx].pos[0] + moveX),
+        snapToGrid(neighbor[idx].pos[1] + moveY),
+      ];
+    }
 
     // Clamp to board bounds
     const bounds = neighbor[idx].bounds;
@@ -644,6 +685,108 @@ export const optimizePlacement = (
 };
 
 // =====================
+// ZONE HELPERS
+// =====================
+
+/** Get center position for a placement zone. */
+const getZoneCenter = (zone: PlacementZone, boardBounds: BoundingBox): Vec2 => {
+  const cx = (boardBounds.minX + boardBounds.maxX) / 2;
+  const cy = (boardBounds.minY + boardBounds.maxY) / 2;
+  const qx = boardBounds.width / 4;
+  const qy = boardBounds.height / 4;
+
+  switch (zone) {
+    case 'center':
+      return [cx, cy];
+    case 'top':
+      return [cx, boardBounds.minY + BOARD_MARGIN + qy];
+    case 'bottom':
+      return [cx, boardBounds.maxY - BOARD_MARGIN - qy];
+    case 'left':
+      return [boardBounds.minX + BOARD_MARGIN + qx, cy];
+    case 'right':
+      return [boardBounds.maxX - BOARD_MARGIN - qx, cy];
+    case 'top-left':
+      return [boardBounds.minX + BOARD_MARGIN + qx, boardBounds.minY + BOARD_MARGIN + qy];
+    case 'top-right':
+      return [boardBounds.maxX - BOARD_MARGIN - qx, boardBounds.minY + BOARD_MARGIN + qy];
+    case 'bottom-left':
+      return [boardBounds.minX + BOARD_MARGIN + qx, boardBounds.maxY - BOARD_MARGIN - qy];
+    case 'bottom-right':
+      return [boardBounds.maxX - BOARD_MARGIN - qx, boardBounds.maxY - BOARD_MARGIN - qy];
+    default:
+      return [cx, cy];
+  }
+};
+
+/** Find optimal rotation for a component based on connections. */
+export const findOptimalRotation = (
+  comp: PlacedComponent,
+  compIndex: number,
+  connections: ConnectionDef[],
+  otherComponents: PlacedComponent[]
+): number => {
+  const fp = getFootprint(comp.type);
+  if (!fp || fp.pads.length < 2) return comp.rotation;
+
+  let bestRotation = comp.rotation;
+  let bestScore = Infinity;
+
+  for (const rotation of ROTATION_ANGLES) {
+    let totalDistance = 0;
+
+    // Calculate total wire length for this rotation
+    for (const conn of connections) {
+      let padPos: Vec2 | null = null;
+      let otherPos: Vec2 | null = null;
+
+      if (conn.from.componentIndex === compIndex) {
+        const pad = fp.pads[conn.from.padIndex];
+        if (pad) {
+          padPos = rotatePoint(pad.pos, rotation);
+          padPos = [padPos[0] + comp.pos[0], padPos[1] + comp.pos[1]];
+        }
+        const otherComp = otherComponents[conn.to.componentIndex];
+        if (otherComp) {
+          const otherFp = getFootprint(otherComp.type);
+          const otherPad = otherFp?.pads[conn.to.padIndex];
+          if (otherPad) {
+            const rotated = rotatePoint(otherPad.pos, otherComp.rotation);
+            otherPos = [rotated[0] + otherComp.pos[0], rotated[1] + otherComp.pos[1]];
+          }
+        }
+      } else if (conn.to.componentIndex === compIndex) {
+        const pad = fp.pads[conn.to.padIndex];
+        if (pad) {
+          padPos = rotatePoint(pad.pos, rotation);
+          padPos = [padPos[0] + comp.pos[0], padPos[1] + comp.pos[1]];
+        }
+        const otherComp = otherComponents[conn.from.componentIndex];
+        if (otherComp) {
+          const otherFp = getFootprint(otherComp.type);
+          const otherPad = otherFp?.pads[conn.from.padIndex];
+          if (otherPad) {
+            const rotated = rotatePoint(otherPad.pos, otherComp.rotation);
+            otherPos = [rotated[0] + otherComp.pos[0], rotated[1] + otherComp.pos[1]];
+          }
+        }
+      }
+
+      if (padPos && otherPos) {
+        totalDistance += Math.hypot(otherPos[0] - padPos[0], otherPos[1] - padPos[1]);
+      }
+    }
+
+    if (totalDistance < bestScore) {
+      bestScore = totalDistance;
+      bestRotation = rotation;
+    }
+  }
+
+  return bestRotation;
+};
+
+// =====================
 // MAIN ENTRY POINT
 // =====================
 
@@ -651,12 +794,21 @@ export const optimizePlacement = (
 export const generatePlacements = (
   assemblyComponents: AssemblyComponent[],
   board: Board,
-  connections: ConnectionDef[]
+  connections: ConnectionDef[],
+  options: PlacementOptions = { constraints: [], optimizeOrientation: true }
 ): ArrangementOption[] => {
   const expanded = expandComponents(assemblyComponents, board);
 
   if (expanded.length === 0) {
     return [];
+  }
+
+  // Build constraint lookup by component type + instance
+  const constraintMap = new Map<string, PlacementConstraint>();
+  for (const ac of assemblyComponents) {
+    if (ac.constraint) {
+      constraintMap.set(ac.id, ac.constraint);
+    }
   }
 
   const strategies: { name: PlacementStrategy; label: string; description: string }[] = [
@@ -667,7 +819,7 @@ export const generatePlacements = (
     { name: 'radial', label: 'Radial', description: 'Circular arrangement around center' },
   ];
 
-  const options: ArrangementOption[] = [];
+  const arrangementOptions: ArrangementOption[] = [];
 
   for (const strategy of strategies) {
     // Generate initial placement
@@ -690,8 +842,16 @@ export const generatePlacements = (
         break;
     }
 
+    // Apply constraints from assembly components
+    placement = applyConstraints(placement, assemblyComponents, board);
+
+    // Optimize orientation for each component if enabled
+    if (options.optimizeOrientation) {
+      placement = optimizeOrientations(placement, connections);
+    }
+
     // Optimize placement
-    const optimized = optimizePlacement(placement, connections, board);
+    const optimized = optimizePlacement(placement, connections, board, options.optimizeOrientation);
 
     // Score and create option
     const { score, metrics } = scoreArrangement(optimized, connections, board);
@@ -699,7 +859,7 @@ export const generatePlacements = (
     // Convert to Component[] format
     const components = placedToComponents(optimized);
 
-    options.push({
+    arrangementOptions.push({
       id: `arr_${strategy.name}_${Date.now()}`,
       name: strategy.label,
       description: strategy.description,
@@ -711,9 +871,194 @@ export const generatePlacements = (
   }
 
   // Sort by score (best first)
-  options.sort((a, b) => b.score - a.score);
+  arrangementOptions.sort((a, b) => b.score - a.score);
 
-  return options;
+  return arrangementOptions;
+};
+
+/** Apply user constraints to initial placement. */
+const applyConstraints = (
+  placement: PlacedComponent[],
+  assemblyComponents: AssemblyComponent[],
+  board: Board
+): PlacedComponent[] => {
+  const boardBounds = getBoardBounds(board);
+
+  // Build mapping from assembly component to expanded indices
+  let expandedIdx = 0;
+  const assemblyToExpanded: Map<string, number[]> = new Map();
+
+  for (const ac of assemblyComponents) {
+    const indices: number[] = [];
+    for (let i = 0; i < ac.quantity; i++) {
+      indices.push(expandedIdx++);
+    }
+    assemblyToExpanded.set(ac.id, indices);
+  }
+
+  // Apply constraints
+  for (const ac of assemblyComponents) {
+    if (!ac.constraint) continue;
+
+    const indices = assemblyToExpanded.get(ac.id) || [];
+
+    for (const idx of indices) {
+      if (idx >= placement.length) continue;
+
+      const comp = placement[idx];
+      comp.constraint = ac.constraint;
+      comp.assemblyId = ac.id;
+
+      // Apply zone constraint
+      if (ac.constraint.zone) {
+        const zoneCenter = getZoneCenter(ac.constraint.zone, boardBounds);
+        comp.pos = [snapToGrid(zoneCenter[0]), snapToGrid(zoneCenter[1])];
+      }
+
+      // Apply locked position
+      if (ac.constraint.locked && ac.constraint.lockedPos) {
+        comp.pos = [...ac.constraint.lockedPos];
+      }
+
+      // Apply locked rotation
+      if (ac.constraint.lockedRotation !== undefined) {
+        const fp = getFootprint(comp.type);
+        if (fp) {
+          comp.rotation = ac.constraint.lockedRotation;
+          comp.bounds = calculateComponentBounds(fp, comp.rotation);
+        }
+      }
+
+      // Apply edge preference (connectors)
+      if (ac.constraint.edge && ac.constraint.edge !== 'any') {
+        const edgePos = getEdgePosition(ac.constraint.edge, boardBounds, comp.bounds);
+        comp.pos = edgePos;
+
+        // Rotate to face outward
+        const edgeRotation = getEdgeRotation(ac.constraint.edge);
+        const fp = getFootprint(comp.type);
+        if (fp) {
+          comp.rotation = edgeRotation;
+          comp.bounds = calculateComponentBounds(fp, edgeRotation);
+        }
+      }
+    }
+  }
+
+  // Resolve overlaps after applying constraints
+  return resolveOverlaps(placement, boardBounds);
+};
+
+/** Get position for edge-aligned component. */
+const getEdgePosition = (
+  edge: 'front' | 'back' | 'left' | 'right',
+  boardBounds: BoundingBox,
+  compBounds: BoundingBox
+): Vec2 => {
+  const cx = (boardBounds.minX + boardBounds.maxX) / 2;
+  const cy = (boardBounds.minY + boardBounds.maxY) / 2;
+
+  switch (edge) {
+    case 'front': // Bottom edge
+      return [snapToGrid(cx), snapToGrid(boardBounds.maxY - BOARD_MARGIN - compBounds.height / 2)];
+    case 'back': // Top edge
+      return [snapToGrid(cx), snapToGrid(boardBounds.minY + BOARD_MARGIN + compBounds.height / 2)];
+    case 'left':
+      return [snapToGrid(boardBounds.minX + BOARD_MARGIN + compBounds.width / 2), snapToGrid(cy)];
+    case 'right':
+      return [snapToGrid(boardBounds.maxX - BOARD_MARGIN - compBounds.width / 2), snapToGrid(cy)];
+    default:
+      return [snapToGrid(cx), snapToGrid(cy)];
+  }
+};
+
+/** Get rotation for edge-aligned component. */
+const getEdgeRotation = (edge: 'front' | 'back' | 'left' | 'right'): number => {
+  switch (edge) {
+    case 'front':
+      return 180;
+    case 'back':
+      return 0;
+    case 'left':
+      return 90;
+    case 'right':
+      return 270;
+    default:
+      return 0;
+  }
+};
+
+/** Resolve overlapping components after constraint application. */
+const resolveOverlaps = (
+  placement: PlacedComponent[],
+  boardBounds: BoundingBox
+): PlacedComponent[] => {
+  const result = [...placement];
+
+  for (let i = 0; i < result.length; i++) {
+    // Skip locked components
+    if (result[i].constraint?.locked) continue;
+
+    for (let j = 0; j < result.length; j++) {
+      if (i === j) continue;
+
+      // Check for overlap
+      if (checkOverlap(result[i], result[j])) {
+        // Push component away
+        const dx = result[i].pos[0] - result[j].pos[0];
+        const dy = result[i].pos[1] - result[j].pos[1];
+        const dist = Math.hypot(dx, dy) || 1;
+
+        const pushDist = COMPONENT_SPACING * 2;
+        result[i].pos = [
+          snapToGrid(result[i].pos[0] + (dx / dist) * pushDist),
+          snapToGrid(result[i].pos[1] + (dy / dist) * pushDist),
+        ];
+
+        // Clamp to board
+        result[i].pos[0] = Math.max(
+          boardBounds.minX + BOARD_MARGIN - result[i].bounds.minX,
+          Math.min(boardBounds.maxX - BOARD_MARGIN - result[i].bounds.maxX, result[i].pos[0])
+        );
+        result[i].pos[1] = Math.max(
+          boardBounds.minY + BOARD_MARGIN - result[i].bounds.minY,
+          Math.min(boardBounds.maxY - BOARD_MARGIN - result[i].bounds.maxY, result[i].pos[1])
+        );
+      }
+    }
+  }
+
+  return result;
+};
+
+/** Optimize orientations for all components. */
+const optimizeOrientations = (
+  placement: PlacedComponent[],
+  connections: ConnectionDef[]
+): PlacedComponent[] => {
+  const result = placement.map((comp, idx) => {
+    // Skip if locked rotation
+    if (comp.constraint?.lockedRotation !== undefined) {
+      return comp;
+    }
+
+    const optimalRotation = findOptimalRotation(comp, idx, connections, placement);
+
+    if (optimalRotation !== comp.rotation) {
+      const fp = getFootprint(comp.type);
+      if (fp) {
+        return {
+          ...comp,
+          rotation: optimalRotation,
+          bounds: calculateComponentBounds(fp, optimalRotation),
+        };
+      }
+    }
+
+    return comp;
+  });
+
+  return result;
 };
 
 /** Convert PlacedComponent[] to Component[]. */

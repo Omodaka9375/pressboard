@@ -1,10 +1,18 @@
 /**
  * Lid geometry generation for press-fit enclosures.
- * Creates hollow lid shells with pressure pads, magnet recesses, and ventilation.
+ * Creates hollow lid shells with pressure pads, magnet recesses, ventilation,
+ * screw bosses, feet, and base shells for split-case/tray styles.
  */
 
 import * as THREE from 'three';
-import type { Enclosure, PressurePad, MagnetPlacement, VentPattern } from '../../types';
+import type {
+  Enclosure,
+  PressurePad,
+  MagnetPlacement,
+  ScrewBoss,
+  EnclosureFoot,
+  VentPattern,
+} from '../../types';
 
 // Configuration constants
 const SNAP_FIT_DEPTH = 1.5;
@@ -365,6 +373,97 @@ export function createSnapFitRidge(
   return geometry;
 }
 
+/** Creates screw boss geometry - cylindrical post with central hole. */
+export function createScrewBossGeometry(boss: ScrewBoss): THREE.BufferGeometry {
+  const geometries: THREE.BufferGeometry[] = [];
+
+  // Outer cylinder
+  const outer = new THREE.CylinderGeometry(
+    boss.outerDiameter / 2,
+    boss.outerDiameter / 2,
+    boss.height,
+    20
+  );
+  outer.rotateX(Math.PI / 2);
+  outer.translate(boss.x, boss.y, boss.height / 2);
+  geometries.push(outer);
+
+  // Top flange for visual
+  const flange = new THREE.CylinderGeometry(
+    boss.outerDiameter / 2 + 1,
+    boss.outerDiameter / 2,
+    1,
+    20
+  );
+  flange.rotateX(Math.PI / 2);
+  flange.translate(boss.x, boss.y, boss.height - 0.5);
+  geometries.push(flange);
+
+  return mergeGeometries(geometries);
+}
+
+/** Creates all screw bosses as merged geometry. */
+export function createAllScrewBosses(bosses: ScrewBoss[]): THREE.BufferGeometry {
+  if (bosses.length === 0) return new THREE.BufferGeometry();
+
+  const geometries: THREE.BufferGeometry[] = [];
+  for (const boss of bosses) {
+    geometries.push(createScrewBossGeometry(boss));
+  }
+
+  return mergeGeometries(geometries);
+}
+
+/** Creates foot geometry. */
+export function createFootGeometry(foot: EnclosureFoot): THREE.BufferGeometry {
+  if (foot.style === 'square') {
+    const geo = new THREE.BoxGeometry(foot.diameter, foot.diameter, foot.height);
+    geo.translate(foot.x, foot.y, -foot.height / 2);
+    return geo;
+  }
+
+  // Round or rubber-pad style
+  const geo = new THREE.CylinderGeometry(foot.diameter / 2, foot.diameter / 2, foot.height, 16);
+  geo.rotateX(Math.PI / 2);
+  geo.translate(foot.x, foot.y, -foot.height / 2);
+  return geo;
+}
+
+/** Creates all feet as merged geometry. */
+export function createAllFeet(feet: EnclosureFoot[]): THREE.BufferGeometry {
+  if (feet.length === 0) return new THREE.BufferGeometry();
+
+  const geometries: THREE.BufferGeometry[] = [];
+  for (const foot of feet) {
+    geometries.push(createFootGeometry(foot));
+  }
+
+  return mergeGeometries(geometries);
+}
+
+/** Creates base shell geometry for split-case or tray style. */
+export function createBaseGeometry(
+  bounds: BoardBounds,
+  enclosure: Enclosure
+): THREE.BufferGeometry {
+  const { wallThickness, baseHeight, cornerRadius } = enclosure;
+  const outerW = bounds.width + wallThickness * 2;
+  const outerH = bounds.height + wallThickness * 2;
+
+  // Create outer shell
+  const outerShape = createRoundedRectShape(outerW, outerH, cornerRadius);
+
+  const extrudeSettings = {
+    depth: baseHeight,
+    bevelEnabled: false,
+  };
+
+  const geometry = new THREE.ExtrudeGeometry(outerShape, extrudeSettings);
+  geometry.translate(bounds.centerX, bounds.centerY, -baseHeight);
+
+  return geometry;
+}
+
 /** Creates polarity indicator geometry (N or S mark on magnet recess). */
 export function createPolarityIndicator(
   magnet: MagnetPlacement,
@@ -493,6 +592,19 @@ export function createCompleteLid(bounds: BoardBounds, enclosure: Enclosure): TH
   const lidMesh = new THREE.Mesh(lidGeo, lidMaterial);
   group.add(lidMesh);
 
+  // Base shell for split-case or tray styles
+  if (enclosure.style !== 'lid-only') {
+    const baseGeo = createBaseGeometry(bounds, enclosure);
+    const baseMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3d8bfd,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide,
+    });
+    const baseMesh = new THREE.Mesh(baseGeo, baseMaterial);
+    group.add(baseMesh);
+  }
+
   // Pressure pads
   if (enclosure.pressurePads.length > 0) {
     const padsGeo = createAllPressurePads(
@@ -531,13 +643,65 @@ export function createCompleteLid(bounds: BoardBounds, enclosure: Enclosure): TH
     }
   }
 
-  // Snap-fit ridge
-  const ridgeGeo = createSnapFitRidge(bounds, enclosure.wallThickness, enclosure.snapFitTolerance);
-  const ridgeMaterial = new THREE.MeshStandardMaterial({
-    color: 0x3a7bd5,
-  });
-  const ridgeMesh = new THREE.Mesh(ridgeGeo, ridgeMaterial);
-  group.add(ridgeMesh);
+  // Snap-fit ridge (only for lid-only style)
+  if (enclosure.style === 'lid-only') {
+    const ridgeGeo = createSnapFitRidge(
+      bounds,
+      enclosure.wallThickness,
+      enclosure.snapFitTolerance
+    );
+    const ridgeMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3a7bd5,
+    });
+    const ridgeMesh = new THREE.Mesh(ridgeGeo, ridgeMaterial);
+    group.add(ridgeMesh);
+  }
+
+  // Screw bosses (for split-case and tray styles)
+  if (
+    enclosure.style !== 'lid-only' &&
+    enclosure.showScrewBosses &&
+    enclosure.screwBosses.length > 0
+  ) {
+    const bossGeo = createAllScrewBosses(enclosure.screwBosses);
+    const bossMaterial = new THREE.MeshStandardMaterial({
+      color: 0x5c9aff,
+      transparent: true,
+      opacity: 0.85,
+    });
+    const bossMesh = new THREE.Mesh(bossGeo, bossMaterial);
+    group.add(bossMesh);
+
+    // Screw holes in base (visual indicator)
+    for (const boss of enclosure.screwBosses) {
+      const holeGeo = new THREE.CylinderGeometry(
+        boss.innerDiameter / 2,
+        boss.innerDiameter / 2,
+        enclosure.baseHeight + 1,
+        12
+      );
+      holeGeo.rotateX(Math.PI / 2);
+      holeGeo.translate(boss.x, boss.y, -enclosure.baseHeight / 2);
+      const holeMaterial = new THREE.MeshStandardMaterial({
+        color: 0x222222,
+      });
+      const holeMesh = new THREE.Mesh(holeGeo, holeMaterial);
+      group.add(holeMesh);
+    }
+  }
+
+  // Feet (for split-case and tray styles)
+  if (enclosure.style !== 'lid-only' && enclosure.showFeet && enclosure.feet.length > 0) {
+    const feetGeo = createAllFeet(enclosure.feet);
+    const footMaterial = new THREE.MeshStandardMaterial({
+      color: 0x333333,
+      roughness: 0.8,
+    });
+    const feetMesh = new THREE.Mesh(feetGeo, footMaterial);
+    // Position feet relative to base bottom
+    feetMesh.position.z = -enclosure.baseHeight;
+    group.add(feetMesh);
+  }
 
   return group;
 }

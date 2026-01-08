@@ -5,7 +5,18 @@ import type {
   ArrangementOption,
   AutoAssemblyStep,
   Board,
+  PlacementZone,
+  EdgePreference,
+  PlacementConstraint,
 } from '../types';
+import { autoDetectConnections as detectConnections } from '../lib/assembly/connectionDetector';
+
+type DetectionStats = {
+  powerConnections: number;
+  groundConnections: number;
+  signalConnections: number;
+  unknownComponents: string[];
+};
 
 type AutoAssemblyState = {
   // Wizard state
@@ -17,6 +28,7 @@ type AutoAssemblyState = {
 
   // Step 2: Connections
   connections: ConnectionDef[];
+  lastDetectionStats: DetectionStats | null;
 
   // Step 3: Arrangements
   arrangements: ArrangementOption[];
@@ -25,6 +37,7 @@ type AutoAssemblyState = {
 
   // Options
   generateEnclosure: boolean;
+  optimizeOrientation: boolean;
 
   // Actions
   openWizard: () => void;
@@ -40,6 +53,12 @@ type AutoAssemblyState = {
   updateComponentQuantity: (id: string, quantity: number) => void;
   clearComponents: () => void;
 
+  // Constraint actions
+  setComponentZone: (id: string, zone: PlacementZone | undefined) => void;
+  setComponentEdge: (id: string, edge: EdgePreference | undefined) => void;
+  lockComponent: (id: string, locked: boolean) => void;
+  setKeepTogether: (ids: string[]) => void;
+
   // Connection actions
   addConnection: (
     fromComp: number,
@@ -49,7 +68,10 @@ type AutoAssemblyState = {
     isPower?: boolean
   ) => void;
   removeConnection: (id: string) => void;
+  updateConnectionNetName: (id: string, netName: string) => void;
   clearConnections: () => void;
+  autoDetectConnections: () => void;
+  clearAutoDetectedConnections: () => void;
 
   // Arrangement actions
   setArrangements: (arrangements: ArrangementOption[]) => void;
@@ -58,9 +80,11 @@ type AutoAssemblyState = {
 
   // Options
   setGenerateEnclosure: (generate: boolean) => void;
+  setOptimizeOrientation: (optimize: boolean) => void;
 
-  // Get selected arrangement
+  // Getters
   getSelectedArrangement: () => ArrangementOption | null;
+  getConstraints: () => PlacementConstraint[];
 };
 
 const STEP_ORDER: AutoAssemblyStep[] = ['select', 'connect', 'arrange', 'preview'];
@@ -70,10 +94,12 @@ export const useAutoAssemblyStore = create<AutoAssemblyState>((set, get) => ({
   step: 'select',
   selectedComponents: [],
   connections: [],
+  lastDetectionStats: null,
   arrangements: [],
   selectedArrangementId: null,
   isGenerating: false,
   generateEnclosure: true,
+  optimizeOrientation: true,
 
   openWizard: () => set({ isOpen: true, step: 'select' }),
 
@@ -84,10 +110,12 @@ export const useAutoAssemblyStore = create<AutoAssemblyState>((set, get) => ({
       step: 'select',
       selectedComponents: [],
       connections: [],
+      lastDetectionStats: null,
       arrangements: [],
       selectedArrangementId: null,
       isGenerating: false,
       generateEnclosure: true,
+      optimizeOrientation: true,
     }),
 
   setStep: (step) => set({ step }),
@@ -157,8 +185,45 @@ export const useAutoAssemblyStore = create<AutoAssemblyState>((set, get) => ({
     }));
   },
 
-  clearComponents: () => set({ selectedComponents: [], connections: [] }),
+  clearComponents: () => set({ selectedComponents: [], connections: [], lastDetectionStats: null }),
 
+  // Constraint actions
+  setComponentZone: (id, zone) => {
+    set((state) => ({
+      selectedComponents: state.selectedComponents.map((c) =>
+        c.id === id ? { ...c, constraint: { ...c.constraint, componentId: id, zone } } : c
+      ),
+    }));
+  },
+
+  setComponentEdge: (id, edge) => {
+    set((state) => ({
+      selectedComponents: state.selectedComponents.map((c) =>
+        c.id === id ? { ...c, constraint: { ...c.constraint, componentId: id, edge } } : c
+      ),
+    }));
+  },
+
+  lockComponent: (id, locked) => {
+    set((state) => ({
+      selectedComponents: state.selectedComponents.map((c) =>
+        c.id === id ? { ...c, constraint: { ...c.constraint, componentId: id, locked } } : c
+      ),
+    }));
+  },
+
+  setKeepTogether: (ids) => {
+    if (ids.length < 2) return;
+    set((state) => ({
+      selectedComponents: state.selectedComponents.map((c) =>
+        ids.includes(c.id)
+          ? { ...c, constraint: { ...c.constraint, componentId: c.id, keepTogether: ids } }
+          : c
+      ),
+    }));
+  },
+
+  // Connection actions
   addConnection: (fromComp, fromPad, toComp, toPad, isPower = false) => {
     const { connections } = get();
 
@@ -196,7 +261,30 @@ export const useAutoAssemblyStore = create<AutoAssemblyState>((set, get) => ({
     }));
   },
 
-  clearConnections: () => set({ connections: [] }),
+  updateConnectionNetName: (id, netName) => {
+    set((state) => ({
+      connections: state.connections.map((c) => (c.id === id ? { ...c, netName } : c)),
+    }));
+  },
+
+  clearConnections: () => set({ connections: [], lastDetectionStats: null }),
+
+  autoDetectConnections: () => {
+    const { selectedComponents, connections } = get();
+    const result = detectConnections(selectedComponents, connections);
+
+    set({
+      connections: [...connections, ...result.connections],
+      lastDetectionStats: result.stats,
+    });
+  },
+
+  clearAutoDetectedConnections: () => {
+    set((state) => ({
+      connections: state.connections.filter((c) => !c.autoDetected),
+      lastDetectionStats: null,
+    }));
+  },
 
   setArrangements: (arrangements) => {
     set({
@@ -211,9 +299,18 @@ export const useAutoAssemblyStore = create<AutoAssemblyState>((set, get) => ({
 
   setGenerateEnclosure: (generateEnclosure) => set({ generateEnclosure }),
 
+  setOptimizeOrientation: (optimizeOrientation) => set({ optimizeOrientation }),
+
   getSelectedArrangement: () => {
     const { arrangements, selectedArrangementId } = get();
     return arrangements.find((a) => a.id === selectedArrangementId) || null;
+  },
+
+  getConstraints: () => {
+    const { selectedComponents } = get();
+    return selectedComponents
+      .filter((c) => c.constraint)
+      .map((c) => c.constraint as PlacementConstraint);
   },
 }));
 

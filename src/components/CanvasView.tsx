@@ -14,7 +14,12 @@ const MAX_ZOOM = 4;
 const ZOOM_SENSITIVITY = 0.001;
 
 const CanvasView = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({
+    width: 800,
+    height: 600,
+  });
   const {
     project,
     violations,
@@ -49,6 +54,24 @@ const CanvasView = () => {
   const [gridSizeIndex, setGridSizeIndex] = useState(DEFAULT_GRID_INDEX);
   const gridSize = GRID_SIZES[gridSizeIndex];
 
+  // Resize canvas to match container
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setCanvasSize({ width: Math.floor(width), height: Math.floor(height) });
+        }
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   const snapToGrid = (value: number): number => Math.round(value / gridSize) * gridSize;
 
   // Helper to calculate board center
@@ -67,13 +90,13 @@ const CanvasView = () => {
     return [(minX + maxX) / 2, (minY + maxY) / 2];
   };
 
-  // Zoom and pan state - initialize pan to center board in canvas (400, 300 is canvas center)
+  // Zoom and pan state - initialize pan to center board in canvas
   const [zoom, setZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<Vec2>([0, 0]);
   const [pan, setPan] = useState<Vec2>(() => {
     const [cx, cy] = calcBoardCenter(project.board.boundary);
-    return [400 - cx, 300 - cy];
+    return [canvasSize.width / 2 - cx, canvasSize.height / 2 - cy];
   });
 
   // Keyboard shortcuts
@@ -251,6 +274,7 @@ const CanvasView = () => {
     showDRCMarkers,
     showComponentLabels,
     theme,
+    canvasSize,
   ]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -420,11 +444,11 @@ const CanvasView = () => {
     e.preventDefault(); // Prevent context menu on right-click (used for panning)
   };
 
-  const resetView = () => {
+  const resetView = useCallback(() => {
     setZoom(1);
     const [cx, cy] = calcBoardCenter(project.board.boundary);
-    setPan([400 - cx, 300 - cy]);
-  };
+    setPan([canvasSize.width / 2 - cx, canvasSize.height / 2 - cy]);
+  }, [project.board.boundary, canvasSize]);
 
   const handleDragOver = (e: React.DragEvent<HTMLCanvasElement>) => {
     e.preventDefault();
@@ -549,7 +573,10 @@ const CanvasView = () => {
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', flex: 1 }}>
+    <div
+      ref={containerRef}
+      style={{ position: 'relative', width: '100%', height: '100%', flex: 1 }}
+    >
       <div
         style={{
           position: 'absolute',
@@ -602,6 +629,7 @@ const CanvasView = () => {
               border: '1px solid #ccc',
               borderRadius: '3px',
               background: '#f5f5f5',
+              color: 'gray',
             }}
           >
             Reset
@@ -616,8 +644,8 @@ const CanvasView = () => {
       </div>
       <canvas
         ref={canvasRef}
-        width={800}
-        height={600}
+        width={canvasSize.width}
+        height={canvasSize.height}
         tabIndex={0}
         onClick={handleCanvasClick}
         onMouseDown={handleMouseDown}
@@ -632,8 +660,6 @@ const CanvasView = () => {
           cursor: getCursor(),
           backgroundColor: theme === 'dark' ? '#252540' : '#fff',
           outline: 'none',
-          width: '100%',
-          height: '100%',
         }}
       />
     </div>
@@ -839,12 +865,22 @@ const drawComponent = (
 
   ctx.restore();
 
-  // Draw label
+  // Draw label above component
   if (showLabel) {
     ctx.fillStyle = theme === 'dark' ? '#fff' : '#000';
     ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
     const label = footprint?.name?.split(' ')[0] || type;
-    ctx.fillText(label, pos[0] + 12, pos[1] + 4);
+    // Calculate top of component for label placement
+    let labelY = pos[1];
+    if (footprint?.outline && footprint.outline.length > 0) {
+      const minY = Math.min(...footprint.outline.map((p) => p[1]));
+      labelY = pos[1] + minY - 8; // Place label above outline
+    } else {
+      labelY = pos[1] - 12; // Default offset above
+    }
+    ctx.fillText(label, pos[0], labelY);
+    ctx.textAlign = 'left'; // Reset text align
   }
 };
 

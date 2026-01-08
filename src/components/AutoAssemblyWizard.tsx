@@ -5,7 +5,8 @@ import { getAllFootprints, getFootprint } from '../data/footprints';
 import { getComponentIcon } from '../data/componentIcons';
 import { generatePlacements } from '../lib/assembly/placementEngine';
 import { routeArrangement } from '../lib/assembly/autoRouter';
-import type { ArrangementOption, AssemblyComponent } from '../types';
+import { getPadLabel, inferComponentRole } from '../lib/assembly/connectionDetector';
+import type { ArrangementOption, AssemblyComponent, PlacementZone, EdgePreference } from '../types';
 import './AutoAssemblyWizard.css';
 
 const STEP_LABELS = ['Select', 'Connect', 'Arrange', 'Preview'];
@@ -17,10 +18,12 @@ const AutoAssemblyWizard = () => {
     step,
     selectedComponents,
     connections,
+    lastDetectionStats,
     arrangements,
     selectedArrangementId,
     isGenerating,
     generateEnclosure,
+    optimizeOrientation,
     closeWizard,
     reset,
     setStep,
@@ -29,12 +32,18 @@ const AutoAssemblyWizard = () => {
     addComponent,
     removeComponent,
     updateComponentQuantity,
+    setComponentZone,
+    setComponentEdge,
     addConnection,
     removeConnection,
+    updateConnectionNetName,
+    autoDetectConnections,
+    clearAutoDetectedConnections,
     setArrangements,
     selectArrangement,
     setIsGenerating,
     setGenerateEnclosure,
+    setOptimizeOrientation,
     getSelectedArrangement,
   } = useAutoAssemblyStore();
 
@@ -67,8 +76,11 @@ const AutoAssemblyWizard = () => {
     // Simulate async work
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // Generate placement options
-    const options = generatePlacements(selectedComponents, project.board, connections);
+    // Generate placement options with constraints and orientation optimization
+    const options = generatePlacements(selectedComponents, project.board, connections, {
+      constraints: selectedComponents.filter((c) => c.constraint).map((c) => c.constraint!),
+      optimizeOrientation,
+    });
 
     // Route each arrangement
     const routedOptions = options.map((opt) => routeArrangement(opt, connections, project.board));
@@ -99,7 +111,11 @@ const AutoAssemblyWizard = () => {
         {/* Header */}
         <div className="wizard-header">
           <h2>🔧 Auto-Assembly Wizard</h2>
-          <button className="wizard-close" onClick={closeWizard}>
+          <button
+            className="wizard-close"
+            onClick={closeWizard}
+            title="Close wizard without applying changes"
+          >
             ×
           </button>
         </div>
@@ -135,6 +151,8 @@ const AutoAssemblyWizard = () => {
               addComponent={addComponent}
               removeComponent={removeComponent}
               updateComponentQuantity={updateComponentQuantity}
+              setComponentZone={setComponentZone}
+              setComponentEdge={setComponentEdge}
             />
           )}
 
@@ -146,6 +164,10 @@ const AutoAssemblyWizard = () => {
               setConnFrom={setConnFrom}
               addConnection={addConnection}
               removeConnection={removeConnection}
+              updateConnectionNetName={updateConnectionNetName}
+              autoDetectConnections={autoDetectConnections}
+              clearAutoDetectedConnections={clearAutoDetectedConnections}
+              lastDetectionStats={lastDetectionStats}
             />
           )}
 
@@ -157,6 +179,8 @@ const AutoAssemblyWizard = () => {
               isGenerating={isGenerating}
               generateEnclosure={generateEnclosure}
               setGenerateEnclosure={setGenerateEnclosure}
+              optimizeOrientation={optimizeOrientation}
+              setOptimizeOrientation={setOptimizeOrientation}
             />
           )}
 
@@ -177,7 +201,11 @@ const AutoAssemblyWizard = () => {
           </div>
           <div className="wizard-actions">
             {step !== 'select' && (
-              <button className="wizard-btn secondary" onClick={prevStep}>
+              <button
+                className="wizard-btn secondary"
+                onClick={prevStep}
+                title="Go back to the previous step"
+              >
                 ← Back
               </button>
             )}
@@ -186,22 +214,37 @@ const AutoAssemblyWizard = () => {
                 className="wizard-btn primary"
                 onClick={handleGenerate}
                 disabled={isGenerating}
+                title="Create multiple layout options based on your components and connections"
               >
                 {isGenerating ? 'Generating...' : 'Generate Layouts →'}
               </button>
             )}
             {step === 'arrange' && arrangements.length > 0 && (
-              <button className="wizard-btn primary" onClick={nextStep} disabled={!canProceed()}>
+              <button
+                className="wizard-btn primary"
+                onClick={nextStep}
+                disabled={!canProceed()}
+                title="See the final preview before applying"
+              >
                 Preview →
               </button>
             )}
             {step === 'preview' && (
-              <button className="wizard-btn primary" onClick={handleApply}>
+              <button
+                className="wizard-btn primary"
+                onClick={handleApply}
+                title="Add all components and routes to your board"
+              >
                 ✓ Apply to Board
               </button>
             )}
             {step === 'select' && (
-              <button className="wizard-btn primary" onClick={nextStep} disabled={!canProceed()}>
+              <button
+                className="wizard-btn primary"
+                onClick={nextStep}
+                disabled={!canProceed()}
+                title="Continue to define connections between components"
+              >
                 Next →
               </button>
             )}
@@ -223,7 +266,26 @@ type SelectStepProps = {
   addComponent: (type: string) => void;
   removeComponent: (id: string) => void;
   updateComponentQuantity: (id: string, qty: number) => void;
+  setComponentZone: (id: string, zone: PlacementZone | undefined) => void;
+  setComponentEdge: (id: string, edge: EdgePreference | undefined) => void;
 };
+
+const ZONES: { value: PlacementZone | 'none'; label: string }[] = [
+  { value: 'none', label: 'Auto' },
+  { value: 'center', label: 'Center' },
+  { value: 'top', label: 'Top' },
+  { value: 'bottom', label: 'Bottom' },
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+];
+
+const EDGES: { value: EdgePreference | 'none'; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'front', label: 'Front' },
+  { value: 'back', label: 'Back' },
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+];
 
 const SelectStep = ({
   searchQuery,
@@ -232,6 +294,8 @@ const SelectStep = ({
   addComponent,
   removeComponent,
   updateComponentQuantity,
+  setComponentZone,
+  setComponentEdge,
 }: SelectStepProps) => {
   const footprints = getAllFootprints();
   const filtered = searchQuery
@@ -259,10 +323,16 @@ const SelectStep = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
+            title="Type to filter components by name (e.g., 'resistor', 'LED', 'arduino')"
           />
           <div className="component-list">
             {filtered.map((fp) => (
-              <div key={fp.type} className="component-item" onClick={() => addComponent(fp.type)}>
+              <div
+                key={fp.type}
+                className="component-item"
+                onClick={() => addComponent(fp.type)}
+                title={`Click to add ${fp.name} to your board`}
+              >
                 <span className="comp-icon">{getComponentIcon(fp.type)}</span>
                 <span className="comp-name">{fp.name}</span>
                 <span className="comp-add">+</span>
@@ -280,22 +350,90 @@ const SelectStep = ({
             ) : (
               selectedComponents.map((ac) => {
                 const fp = getFootprint(ac.type);
+                const role = inferComponentRole(ac.type);
+                const isConnector = role === 'connector' || role === 'power';
                 return (
-                  <div key={ac.id} className="component-item selected">
-                    <span className="comp-icon">{getComponentIcon(ac.type)}</span>
-                    <span className="comp-name">{fp?.name || ac.type}</span>
-                    <div className="qty-controls">
-                      <button onClick={() => updateComponentQuantity(ac.id, ac.quantity - 1)}>
-                        −
-                      </button>
-                      <span className="qty">{ac.quantity}</span>
-                      <button onClick={() => updateComponentQuantity(ac.id, ac.quantity + 1)}>
-                        +
+                  <div key={ac.id} className="component-item selected expanded">
+                    <div className="comp-main-row">
+                      <span className="comp-icon">{getComponentIcon(ac.type)}</span>
+                      <span className="comp-name">{fp?.name || ac.type}</span>
+                      <span className="comp-role-badge">{role}</span>
+                      <div
+                        className="qty-controls"
+                        title="Change how many of this component to place"
+                      >
+                        <button
+                          onClick={() => updateComponentQuantity(ac.id, ac.quantity - 1)}
+                          title="Decrease quantity"
+                        >
+                          −
+                        </button>
+                        <span className="qty">{ac.quantity}</span>
+                        <button
+                          onClick={() => updateComponentQuantity(ac.id, ac.quantity + 1)}
+                          title="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <button
+                        className="remove-btn"
+                        onClick={() => removeComponent(ac.id)}
+                        title="Remove this component from the selection"
+                      >
+                        ×
                       </button>
                     </div>
-                    <button className="remove-btn" onClick={() => removeComponent(ac.id)}>
-                      ×
-                    </button>
+                    <div className="comp-constraints-row">
+                      <label
+                        className="constraint-label"
+                        title="Preferred area on the board (Auto lets the wizard decide)"
+                      >
+                        Zone:
+                        <select
+                          value={ac.constraint?.zone || 'none'}
+                          onChange={(e) =>
+                            setComponentZone(
+                              ac.id,
+                              e.target.value === 'none'
+                                ? undefined
+                                : (e.target.value as PlacementZone)
+                            )
+                          }
+                        >
+                          {ZONES.map((z) => (
+                            <option key={z.value} value={z.value}>
+                              {z.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {isConnector && (
+                        <label
+                          className="constraint-label"
+                          title="For connectors: which edge of the board should this face (for easy cable access)"
+                        >
+                          Edge:
+                          <select
+                            value={ac.constraint?.edge || 'none'}
+                            onChange={(e) =>
+                              setComponentEdge(
+                                ac.id,
+                                e.target.value === 'none'
+                                  ? undefined
+                                  : (e.target.value as EdgePreference)
+                              )
+                            }
+                          >
+                            {EDGES.map((ed) => (
+                              <option key={ed.value} value={ed.value}>
+                                {ed.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                    </div>
                   </div>
                 );
               })
@@ -313,12 +451,24 @@ type ConnectStepProps = {
     id: string;
     from: { componentIndex: number; padIndex: number };
     to: { componentIndex: number; padIndex: number };
+    netName?: string;
     isPower?: boolean;
+    isGround?: boolean;
+    autoDetected?: boolean;
   }[];
   connFrom: { compIdx: number; padIdx: number } | null;
   setConnFrom: (v: { compIdx: number; padIdx: number } | null) => void;
   addConnection: (fc: number, fp: number, tc: number, tp: number, power?: boolean) => void;
   removeConnection: (id: string) => void;
+  updateConnectionNetName: (id: string, netName: string) => void;
+  autoDetectConnections: () => void;
+  clearAutoDetectedConnections: () => void;
+  lastDetectionStats: {
+    powerConnections: number;
+    groundConnections: number;
+    signalConnections: number;
+    unknownComponents: string[];
+  } | null;
 };
 
 const ConnectStep = ({
@@ -328,6 +478,10 @@ const ConnectStep = ({
   setConnFrom,
   addConnection,
   removeConnection,
+  updateConnectionNetName,
+  autoDetectConnections,
+  clearAutoDetectedConnections,
+  lastDetectionStats,
 }: ConnectStepProps) => {
   const handlePadClick = (compIdx: number, padIdx: number) => {
     if (!connFrom) {
@@ -348,17 +502,59 @@ const ConnectStep = ({
     }
   });
 
+  const autoCount = connections.filter((c) => c.autoDetected).length;
+  const manualCount = connections.length - autoCount;
+
   return (
     <div className="step-content connect-step">
       <div className="step-description">
         <h3>2. Define Connections</h3>
         <p>
-          Click a pad to start, then click another pad to connect them. Skip if routing manually.
+          Click a pad to start, then click another pad to connect them. Or use auto-detect for
+          power/ground.
         </p>
+
+        {/* Auto-detect controls */}
+        <div className="auto-detect-section">
+          <button
+            className="auto-detect-btn"
+            onClick={autoDetectConnections}
+            title="Automatically find and connect power (VCC) and ground (GND) pins between all components"
+          >
+            ⚡ Auto-Detect Connections
+          </button>
+          {autoCount > 0 && (
+            <button
+              className="clear-auto-btn"
+              onClick={clearAutoDetectedConnections}
+              title="Remove all auto-detected connections (keeps manually added ones)"
+            >
+              Clear Auto ({autoCount})
+            </button>
+          )}
+        </div>
+
+        {lastDetectionStats && (
+          <div className="detection-stats">
+            Detected: {lastDetectionStats.powerConnections} VCC,{' '}
+            {lastDetectionStats.groundConnections} GND
+            {lastDetectionStats.signalConnections > 0 &&
+              `, ${lastDetectionStats.signalConnections} signal`}
+            {lastDetectionStats.unknownComponents.length > 0 && (
+              <span className="unknown-warn">
+                {' '}
+                (Unknown: {lastDetectionStats.unknownComponents.join(', ')})
+              </span>
+            )}
+          </div>
+        )}
+
         {connFrom && (
           <div className="conn-hint active">
             Connecting from Component {connFrom.compIdx + 1}, Pad {connFrom.padIdx + 1}...
-            <button onClick={() => setConnFrom(null)}>Cancel</button>
+            <button onClick={() => setConnFrom(null)} title="Cancel this connection">
+              Cancel
+            </button>
           </div>
         )}
       </div>
@@ -381,16 +577,20 @@ const ConnectStep = ({
                 <div className="pads-row">
                   {fp.pads.map((_pad, padIdx) => {
                     const isSelected = connFrom?.compIdx === expIdx && connFrom?.padIdx === padIdx;
-                    const hasConnection = connections.some(
+                    const conn = connections.find(
                       (c) =>
                         (c.from.componentIndex === expIdx && c.from.padIndex === padIdx) ||
                         (c.to.componentIndex === expIdx && c.to.padIndex === padIdx)
                     );
+                    const isPower = conn?.isPower;
+                    const isGround = conn?.isGround;
+                    const padLabel = getPadLabel(exp.type, padIdx);
                     return (
                       <button
                         key={padIdx}
-                        className={`pad-btn ${isSelected ? 'selected' : ''} ${hasConnection ? 'connected' : ''}`}
+                        className={`pad-btn ${isSelected ? 'selected' : ''} ${conn ? 'connected' : ''} ${isPower ? 'power' : ''} ${isGround ? 'ground' : ''}`}
                         onClick={() => handlePadClick(expIdx, padIdx)}
+                        title={padLabel}
                       >
                         {padIdx + 1}
                       </button>
@@ -404,20 +604,38 @@ const ConnectStep = ({
 
         {/* Connections list */}
         <div className="connections-list">
-          <h4>Connections ({connections.length})</h4>
+          <h4>
+            Connections ({manualCount} manual, {autoCount} auto)
+          </h4>
           {connections.length === 0 ? (
             <p className="empty-hint">No connections defined yet</p>
           ) : (
             connections.map((conn) => {
               const fromType = expanded[conn.from.componentIndex]?.type || '?';
               const toType = expanded[conn.to.componentIndex]?.type || '?';
+              const fromLabel = getPadLabel(fromType, conn.from.padIndex);
+              const toLabel = getPadLabel(toType, conn.to.padIndex);
               return (
-                <div key={conn.id} className="conn-item">
-                  <span>
-                    {fromType.split('_')[0]} P{conn.from.padIndex + 1} → {toType.split('_')[0]} P
-                    {conn.to.padIndex + 1}
-                  </span>
-                  <button onClick={() => removeConnection(conn.id)}>×</button>
+                <div
+                  key={conn.id}
+                  className={`conn-item ${conn.autoDetected ? 'auto' : ''} ${conn.isPower ? 'power' : ''} ${conn.isGround ? 'ground' : ''}`}
+                >
+                  <div className="conn-details">
+                    <span className="conn-path">
+                      {fromType.split('_')[0]} ({fromLabel}) → {toType.split('_')[0]} ({toLabel})
+                    </span>
+                    <input
+                      className="net-name-input"
+                      type="text"
+                      value={conn.netName || ''}
+                      placeholder="Net name"
+                      onChange={(e) => updateConnectionNetName(conn.id, e.target.value)}
+                      title="Optional: give this connection a name (e.g., 'CLK', 'DATA', 'AUDIO_IN')"
+                    />
+                  </div>
+                  <button onClick={() => removeConnection(conn.id)} title="Delete this connection">
+                    ×
+                  </button>
                 </div>
               );
             })
@@ -435,6 +653,8 @@ type ArrangeStepProps = {
   isGenerating: boolean;
   generateEnclosure: boolean;
   setGenerateEnclosure: (v: boolean) => void;
+  optimizeOrientation: boolean;
+  setOptimizeOrientation: (v: boolean) => void;
 };
 
 const ArrangeStep = ({
@@ -444,6 +664,8 @@ const ArrangeStep = ({
   isGenerating,
   generateEnclosure,
   setGenerateEnclosure,
+  optimizeOrientation,
+  setOptimizeOrientation,
 }: ArrangeStepProps) => {
   if (isGenerating) {
     return (
@@ -459,14 +681,30 @@ const ArrangeStep = ({
       <div className="step-description">
         <h3>3. Choose Layout</h3>
         <p>Select the arrangement that best fits your needs. Scores consider routing efficiency.</p>
-        <label className="enclosure-toggle">
-          <input
-            type="checkbox"
-            checked={generateEnclosure}
-            onChange={(e) => setGenerateEnclosure(e.target.checked)}
-          />
-          Generate matching enclosure
-        </label>
+        <div className="arrange-options">
+          <label
+            className="option-toggle"
+            title="Rotate components to minimize total route length and crossings"
+          >
+            <input
+              type="checkbox"
+              checked={optimizeOrientation}
+              onChange={(e) => setOptimizeOrientation(e.target.checked)}
+            />
+            Optimize component orientation
+          </label>
+          <label
+            className="option-toggle"
+            title="Automatically create a 3D-printable case that fits your board"
+          >
+            <input
+              type="checkbox"
+              checked={generateEnclosure}
+              onChange={(e) => setGenerateEnclosure(e.target.checked)}
+            />
+            Generate matching enclosure
+          </label>
+        </div>
       </div>
 
       <div className="arrangements-grid">
@@ -475,22 +713,25 @@ const ArrangeStep = ({
             key={arr.id}
             className={`arrangement-card ${selectedArrangementId === arr.id ? 'selected' : ''}`}
             onClick={() => selectArrangement(arr.id)}
+            title="Click to select this layout option"
           >
             <div className="arr-header">
               <h4>{arr.name}</h4>
-              <span className="arr-score">{arr.score}</span>
+              <span className="arr-score" title="Quality score (higher is better)">
+                {arr.score}
+              </span>
             </div>
             <p className="arr-desc">{arr.description}</p>
             <div className="arr-metrics">
-              <div className="metric">
+              <div className="metric" title="Total length of all copper tape routes">
                 <span className="metric-label">Route Length</span>
                 <span className="metric-value">{arr.metrics.totalRouteLength}mm</span>
               </div>
-              <div className="metric">
+              <div className="metric" title="Number of places where routes cross (fewer is better)">
                 <span className="metric-label">Crossings</span>
                 <span className="metric-value">{arr.metrics.routeCrossings}</span>
               </div>
-              <div className="metric">
+              <div className="metric" title="How much of the board area is used">
                 <span className="metric-label">Utilization</span>
                 <span className="metric-value">
                   {Math.round(arr.metrics.boardUtilization * 100)}%

@@ -2,10 +2,14 @@ import { create } from 'zustand';
 import { getComponentHeight, getContactHeight } from '../data/footprints';
 import type {
   Enclosure,
+  EnclosureStyle,
   PressurePad,
   MagnetPlacement,
   MagnetPolarity,
   ConnectorCutout,
+  ScrewBoss,
+  EnclosureFoot,
+  LabelArea,
   VentPattern,
   Component,
   Vec2,
@@ -17,8 +21,10 @@ type EnclosureState = {
 
   // Actions
   setEnabled: (enabled: boolean) => void;
+  setStyle: (style: EnclosureStyle) => void;
   setWallThickness: (thickness: number) => void;
   setLidHeight: (height: number) => void;
+  setBaseHeight: (height: number) => void;
   setCornerRadius: (radius: number) => void;
   setClearance: (clearance: number) => void;
   setSnapFitTolerance: (tolerance: number) => void;
@@ -44,6 +50,25 @@ type EnclosureState = {
   generateConnectorCutouts: (components: Component[]) => void;
   updateConnectorCutout: (id: string, updates: Partial<ConnectorCutout>) => void;
 
+  // Screw bosses
+  generateScrewBosses: (boundary: Vec2[]) => void;
+  addScrewBoss: (x: number, y: number) => void;
+  updateScrewBoss: (id: string, updates: Partial<ScrewBoss>) => void;
+  removeScrewBoss: (id: string) => void;
+  setShowScrewBosses: (show: boolean) => void;
+
+  // Feet
+  generateFeet: (boundary: Vec2[]) => void;
+  addFoot: (x: number, y: number) => void;
+  updateFoot: (id: string, updates: Partial<EnclosureFoot>) => void;
+  removeFoot: (id: string) => void;
+  setShowFeet: (show: boolean) => void;
+
+  // Label areas
+  addLabelArea: (x: number, y: number, width: number, height: number) => void;
+  updateLabelArea: (id: string, updates: Partial<LabelArea>) => void;
+  removeLabelArea: (id: string) => void;
+
   // Lid visibility
   setShowLid: (show: boolean) => void;
 
@@ -56,8 +81,10 @@ type EnclosureState = {
 
 const createDefaultEnclosure = (): Enclosure => ({
   enabled: false,
+  style: 'lid-only',
   wallThickness: 2,
   lidHeight: 15,
+  baseHeight: 5,
   cornerRadius: 2,
   clearance: 2,
   snapFitTolerance: 0.2,
@@ -71,6 +98,11 @@ const createDefaultEnclosure = (): Enclosure => ({
   pressurePads: [],
   magnetPlacements: [],
   connectorCutouts: [],
+  screwBosses: [],
+  feet: [],
+  labelAreas: [],
+  showScrewBosses: true,
+  showFeet: true,
 });
 
 export const useEnclosureStore = create<EnclosureState>((set, get) => ({
@@ -82,6 +114,11 @@ export const useEnclosureStore = create<EnclosureState>((set, get) => ({
       enclosure: { ...state.enclosure, enabled },
     })),
 
+  setStyle: (style) =>
+    set((state) => ({
+      enclosure: { ...state.enclosure, style },
+    })),
+
   setWallThickness: (wallThickness) =>
     set((state) => ({
       enclosure: { ...state.enclosure, wallThickness },
@@ -90,6 +127,11 @@ export const useEnclosureStore = create<EnclosureState>((set, get) => ({
   setLidHeight: (lidHeight) =>
     set((state) => ({
       enclosure: { ...state.enclosure, lidHeight },
+    })),
+
+  setBaseHeight: (baseHeight) =>
+    set((state) => ({
+      enclosure: { ...state.enclosure, baseHeight },
     })),
 
   setCornerRadius: (cornerRadius) =>
@@ -307,6 +349,240 @@ export const useEnclosureStore = create<EnclosureState>((set, get) => ({
         connectorCutouts: state.enclosure.connectorCutouts.map((cutout) =>
           cutout.id === id ? { ...cutout, ...updates } : cutout
         ),
+      },
+    })),
+
+  // Screw bosses - auto-generate at corners
+  generateScrewBosses: (boundary) => {
+    if (boundary.length === 0) return;
+
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
+    boundary.forEach(([x, y]) => {
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    });
+
+    const inset = 8; // Inset from corners
+    const bosses: ScrewBoss[] = [
+      {
+        id: 'boss_tl',
+        x: minX + inset,
+        y: minY + inset,
+        outerDiameter: 8,
+        innerDiameter: 3,
+        height: 6,
+        insertType: 'heat-set',
+      },
+      {
+        id: 'boss_tr',
+        x: maxX - inset,
+        y: minY + inset,
+        outerDiameter: 8,
+        innerDiameter: 3,
+        height: 6,
+        insertType: 'heat-set',
+      },
+      {
+        id: 'boss_bl',
+        x: minX + inset,
+        y: maxY - inset,
+        outerDiameter: 8,
+        innerDiameter: 3,
+        height: 6,
+        insertType: 'heat-set',
+      },
+      {
+        id: 'boss_br',
+        x: maxX - inset,
+        y: maxY - inset,
+        outerDiameter: 8,
+        innerDiameter: 3,
+        height: 6,
+        insertType: 'heat-set',
+      },
+    ];
+
+    set((state) => ({
+      enclosure: { ...state.enclosure, screwBosses: bosses },
+    }));
+  },
+
+  addScrewBoss: (x, y) =>
+    set((state) => ({
+      enclosure: {
+        ...state.enclosure,
+        screwBosses: [
+          ...state.enclosure.screwBosses,
+          {
+            id: `boss_${Date.now()}`,
+            x,
+            y,
+            outerDiameter: 8,
+            innerDiameter: 3,
+            height: 6,
+            insertType: 'heat-set',
+          },
+        ],
+      },
+    })),
+
+  updateScrewBoss: (id, updates) =>
+    set((state) => ({
+      enclosure: {
+        ...state.enclosure,
+        screwBosses: state.enclosure.screwBosses.map((boss) =>
+          boss.id === id ? { ...boss, ...updates } : boss
+        ),
+      },
+    })),
+
+  removeScrewBoss: (id) =>
+    set((state) => ({
+      enclosure: {
+        ...state.enclosure,
+        screwBosses: state.enclosure.screwBosses.filter((boss) => boss.id !== id),
+      },
+    })),
+
+  setShowScrewBosses: (show) =>
+    set((state) => ({
+      enclosure: { ...state.enclosure, showScrewBosses: show },
+    })),
+
+  // Feet - auto-generate at corners
+  generateFeet: (boundary) => {
+    if (boundary.length === 0) return;
+
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
+    boundary.forEach(([x, y]) => {
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    });
+
+    const inset = 6;
+    const feet: EnclosureFoot[] = [
+      {
+        id: 'foot_tl',
+        x: minX + inset,
+        y: minY + inset,
+        diameter: 8,
+        height: 3,
+        style: 'rubber-pad',
+      },
+      {
+        id: 'foot_tr',
+        x: maxX - inset,
+        y: minY + inset,
+        diameter: 8,
+        height: 3,
+        style: 'rubber-pad',
+      },
+      {
+        id: 'foot_bl',
+        x: minX + inset,
+        y: maxY - inset,
+        diameter: 8,
+        height: 3,
+        style: 'rubber-pad',
+      },
+      {
+        id: 'foot_br',
+        x: maxX - inset,
+        y: maxY - inset,
+        diameter: 8,
+        height: 3,
+        style: 'rubber-pad',
+      },
+    ];
+
+    set((state) => ({
+      enclosure: { ...state.enclosure, feet },
+    }));
+  },
+
+  addFoot: (x, y) =>
+    set((state) => ({
+      enclosure: {
+        ...state.enclosure,
+        feet: [
+          ...state.enclosure.feet,
+          {
+            id: `foot_${Date.now()}`,
+            x,
+            y,
+            diameter: 8,
+            height: 3,
+            style: 'rubber-pad',
+          },
+        ],
+      },
+    })),
+
+  updateFoot: (id, updates) =>
+    set((state) => ({
+      enclosure: {
+        ...state.enclosure,
+        feet: state.enclosure.feet.map((foot) => (foot.id === id ? { ...foot, ...updates } : foot)),
+      },
+    })),
+
+  removeFoot: (id) =>
+    set((state) => ({
+      enclosure: {
+        ...state.enclosure,
+        feet: state.enclosure.feet.filter((foot) => foot.id !== id),
+      },
+    })),
+
+  setShowFeet: (show) =>
+    set((state) => ({
+      enclosure: { ...state.enclosure, showFeet: show },
+    })),
+
+  // Label areas
+  addLabelArea: (x, y, width, height) =>
+    set((state) => ({
+      enclosure: {
+        ...state.enclosure,
+        labelAreas: [
+          ...state.enclosure.labelAreas,
+          {
+            id: `label_${Date.now()}`,
+            x,
+            y,
+            width,
+            height,
+            depth: 0.5,
+          },
+        ],
+      },
+    })),
+
+  updateLabelArea: (id, updates) =>
+    set((state) => ({
+      enclosure: {
+        ...state.enclosure,
+        labelAreas: state.enclosure.labelAreas.map((area) =>
+          area.id === id ? { ...area, ...updates } : area
+        ),
+      },
+    })),
+
+  removeLabelArea: (id) =>
+    set((state) => ({
+      enclosure: {
+        ...state.enclosure,
+        labelAreas: state.enclosure.labelAreas.filter((area) => area.id !== id),
       },
     })),
 

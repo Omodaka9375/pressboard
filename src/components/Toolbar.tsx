@@ -169,19 +169,54 @@ const Toolbar = () => {
 
       {/* File operations */}
       <DropdownMenu label="File" icon="📁">
-        <button onClick={handleNewProject}>📄 New Project</button>
-        <button onClick={() => downloadProjectJSON(project)}>💾 Save Project</button>
-        <button onClick={handleLoadProject}>📂 Open Project</button>
+        <button onClick={handleNewProject} title="Start a new empty project">
+          📄 New Project
+        </button>
+        <button
+          onClick={() => downloadProjectJSON(project)}
+          title="Save your project as a JSON file"
+        >
+          💾 Save Project
+        </button>
+        <button onClick={handleLoadProject} title="Load a previously saved project">
+          📂 Open Project
+        </button>
         <div className="menu-divider" />
-        <button onClick={handleFactoryExport}>📦 Export Factory Package</button>
+        <button
+          onClick={handleFactoryExport}
+          title="Export everything needed for manufacturing (STL, BOM, assembly guide)"
+        >
+          📦 Export Factory Package
+        </button>
         <div className="menu-divider" />
-        <button onClick={handleExportSTL}>🖨️ Export STL</button>
-        <button onClick={() => downloadTapeMasksSVG(project)}>📐 Export SVG</button>
-        <button onClick={() => downloadTapeMasksDXF(project)}>📏 Export DXF</button>
-        <button onClick={() => generateAssemblyGuide(project)}>📋 Assembly Guide (PDF)</button>
+        <button onClick={handleExportSTL} title="Export 3D model for 3D printing">
+          🖨️ Export STL
+        </button>
+        <button
+          onClick={() => downloadTapeMasksSVG(project)}
+          title="Export tape masks as SVG for laser cutting"
+        >
+          📐 Export SVG
+        </button>
+        <button
+          onClick={() => downloadTapeMasksDXF(project)}
+          title="Export tape masks as DXF for CNC or laser cutting"
+        >
+          📏 Export DXF
+        </button>
+        <button
+          onClick={() => generateAssemblyGuide(project)}
+          title="Generate a step-by-step PDF guide for building your board"
+        >
+          📋 Assembly Guide (PDF)
+        </button>
         <div className="menu-divider" />
-        <button onClick={() => setShowHelp(true)}>❓ Help & Guide</button>
-        <button onClick={() => setShowAbout(true)}>ℹ️ About PressBoard</button>
+        <button onClick={() => setShowHelp(true)} title="Learn how to use PressBoard">
+          ❓ Help & Guide
+        </button>
+        <button onClick={() => setShowAbout(true)} title="About PressBoard and credits">
+          ℹ️ About PressBoard
+        </button>
       </DropdownMenu>
 
       <HelpDialog isOpen={showHelp} onClose={() => setShowHelp(false)} />
@@ -207,7 +242,7 @@ const Toolbar = () => {
             onChange={(e) => setActiveLayer(e.target.value as Layer)}
             disabled={isDrawingRoute}
             className={`compact-select layer-${activeLayer}`}
-            title="Active Layer"
+            title="Active Layer - Top layer is on top surface, Bottom is underneath the board"
           >
             <option value="top">⬆ Top</option>
             <option value="bottom">⬇ Bottom</option>
@@ -217,7 +252,7 @@ const Toolbar = () => {
             onChange={(e) => setRouteWidth(Number(e.target.value))}
             disabled={isDrawingRoute}
             className="compact-select"
-            title="Tape Width"
+            title="Tape Width - Width of the copper tape channel (5mm is standard)"
           >
             <option value={3}>3mm</option>
             <option value={5}>5mm</option>
@@ -229,7 +264,7 @@ const Toolbar = () => {
             onChange={(e) => setRouteProfile(e.target.value as ChannelProfile)}
             disabled={isDrawingRoute}
             className="compact-select"
-            title="Channel Profile"
+            title="Channel Profile - Shape of the groove that holds the copper tape"
           >
             <option value="U">U-Shape</option>
             <option value="V">V-Shape</option>

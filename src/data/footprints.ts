@@ -409,6 +409,55 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
     ],
   },
 
+  mcu_arduino_uno: {
+    type: 'mcu_arduino_uno',
+    name: 'Arduino Uno R3',
+    height: 15,
+    pads: [
+      // Power header (8 pins)
+      ...Array.from({ length: 8 }, (_, i) => ({
+        pos: [0, i * 2.54] as Vec2,
+        dia: 1.7,
+        width: 1.7,
+        height: 1.7,
+      })),
+      // Analog header (6 pins)
+      ...Array.from({ length: 6 }, (_, i) => ({
+        pos: [0, 20.32 + i * 2.54] as Vec2,
+        dia: 1.7,
+        width: 1.7,
+        height: 1.7,
+      })),
+      // Digital header 0-7 (8 pins)
+      ...Array.from({ length: 8 }, (_, i) => ({
+        pos: [50.8, i * 2.54] as Vec2,
+        dia: 1.7,
+        width: 1.7,
+        height: 1.7,
+      })),
+      // Digital header 8-13 (6 pins)
+      ...Array.from({ length: 6 }, (_, i) => ({
+        pos: [50.8, 20.32 + i * 2.54] as Vec2,
+        dia: 1.7,
+        width: 1.7,
+        height: 1.7,
+      })),
+    ],
+    holes: [
+      // Mounting holes
+      { pos: [2.54, 2.54], dia: 3.2 },
+      { pos: [2.54, 50.8], dia: 3.2 },
+      { pos: [48.26, 2.54], dia: 3.2 },
+      { pos: [48.26, 35.56], dia: 3.2 },
+    ],
+    outline: [
+      [-2, -5],
+      [53.34, -5],
+      [53.34, 68.58],
+      [-2, 68.58],
+    ],
+  },
+
   mcu_arduino_nano: {
     type: 'mcu_arduino_nano',
     name: 'Arduino Nano (30-pin)',
@@ -532,6 +581,184 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
       [24.86, -3],
       [24.86, 56.4],
       [-2, 56.4],
+    ],
+  },
+
+  // Bluetooth Modules
+  bt_hc05: {
+    type: 'bt_hc05',
+    name: 'HC-05 Bluetooth Module',
+    height: 5,
+    pads: [
+      { pos: [0, 0], dia: 1.7 },
+      { pos: [0, 2.54], dia: 1.7 },
+      { pos: [0, 5.08], dia: 1.7 },
+      { pos: [0, 7.62], dia: 1.7 },
+      { pos: [0, 10.16], dia: 1.7 },
+      { pos: [0, 12.7], dia: 1.7 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [0, 2.54], dia: 1.0 },
+      { pos: [0, 5.08], dia: 1.0 },
+      { pos: [0, 7.62], dia: 1.0 },
+      { pos: [0, 10.16], dia: 1.0 },
+      { pos: [0, 12.7], dia: 1.0 },
+    ],
+    outline: [
+      [-2, -3],
+      [15, -3],
+      [15, 36],
+      [-2, 36],
+    ],
+  },
+
+  bt_hc06: {
+    type: 'bt_hc06',
+    name: 'HC-06 Bluetooth Module',
+    height: 5,
+    pads: [
+      { pos: [0, 0], dia: 1.7 },
+      { pos: [0, 2.54], dia: 1.7 },
+      { pos: [0, 5.08], dia: 1.7 },
+      { pos: [0, 7.62], dia: 1.7 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [0, 2.54], dia: 1.0 },
+      { pos: [0, 5.08], dia: 1.0 },
+      { pos: [0, 7.62], dia: 1.0 },
+    ],
+    outline: [
+      [-2, -3],
+      [15, -3],
+      [15, 36],
+      [-2, 36],
+    ],
+  },
+
+  bt_hm10: {
+    type: 'bt_hm10',
+    name: 'HM-10 BLE Module',
+    height: 4,
+    pads: [
+      { pos: [0, 0], dia: 1.7 },
+      { pos: [0, 2.54], dia: 1.7 },
+      { pos: [0, 5.08], dia: 1.7 },
+      { pos: [0, 7.62], dia: 1.7 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [0, 2.54], dia: 1.0 },
+      { pos: [0, 5.08], dia: 1.0 },
+      { pos: [0, 7.62], dia: 1.0 },
+    ],
+    outline: [
+      [-2, -3],
+      [15, -3],
+      [15, 28],
+      [-2, 28],
+    ],
+  },
+
+  bt_rn42: {
+    type: 'bt_rn42',
+    name: 'RN-42 Bluetooth Module',
+    height: 3,
+    pads: Array.from({ length: 12 }, (_, i) => ({
+      pos: [i < 6 ? 0 : 13.5, (i % 6) * 2.54] as Vec2,
+      dia: 1.5,
+      width: 1.5,
+      height: 1.5,
+    })),
+    holes: Array.from({ length: 12 }, (_, i) => ({
+      pos: [i < 6 ? 0 : 13.5, (i % 6) * 2.54] as Vec2,
+      dia: 0.9,
+    })),
+    outline: [
+      [-2, -2],
+      [15.5, -2],
+      [15.5, 26],
+      [-2, 26],
+    ],
+  },
+
+  bt_nrf52840: {
+    type: 'bt_nrf52840',
+    name: 'nRF52840 BLE Module',
+    height: 4,
+    pads: Array.from({ length: 24 }, (_, i) => ({
+      pos: [i < 12 ? 0 : 15.24, (i % 12) * 2.54] as Vec2,
+      dia: 1.7,
+      width: 1.7,
+      height: 1.7,
+    })),
+    holes: Array.from({ length: 24 }, (_, i) => ({
+      pos: [i < 12 ? 0 : 15.24, (i % 12) * 2.54] as Vec2,
+      dia: 1.0,
+    })),
+    outline: [
+      [-2, -3],
+      [17.24, -3],
+      [17.24, 30.48],
+      [-2, 30.48],
+    ],
+  },
+
+  // SD Card Modules
+  sdcard_module: {
+    type: 'sdcard_module',
+    name: 'SD Card Module (SPI)',
+    height: 5,
+    pads: [
+      { pos: [0, 0], dia: 1.7 },
+      { pos: [0, 2.54], dia: 1.7 },
+      { pos: [0, 5.08], dia: 1.7 },
+      { pos: [0, 7.62], dia: 1.7 },
+      { pos: [0, 10.16], dia: 1.7 },
+      { pos: [0, 12.7], dia: 1.7 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [0, 2.54], dia: 1.0 },
+      { pos: [0, 5.08], dia: 1.0 },
+      { pos: [0, 7.62], dia: 1.0 },
+      { pos: [0, 10.16], dia: 1.0 },
+      { pos: [0, 12.7], dia: 1.0 },
+    ],
+    outline: [
+      [-2, -3],
+      [24, -3],
+      [24, 32],
+      [-2, 32],
+    ],
+  },
+
+  sdcard_micro_module: {
+    type: 'sdcard_micro_module',
+    name: 'MicroSD Card Module (SPI)',
+    height: 4,
+    pads: [
+      { pos: [0, 0], dia: 1.7 },
+      { pos: [0, 2.54], dia: 1.7 },
+      { pos: [0, 5.08], dia: 1.7 },
+      { pos: [0, 7.62], dia: 1.7 },
+      { pos: [0, 10.16], dia: 1.7 },
+      { pos: [0, 12.7], dia: 1.7 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [0, 2.54], dia: 1.0 },
+      { pos: [0, 5.08], dia: 1.0 },
+      { pos: [0, 7.62], dia: 1.0 },
+      { pos: [0, 10.16], dia: 1.0 },
+      { pos: [0, 12.7], dia: 1.0 },
+    ],
+    outline: [
+      [-2, -3],
+      [18, -3],
+      [18, 22],
+      [-2, 22],
     ],
   },
 
@@ -2604,6 +2831,127 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
       [6.5, -6.5],
       [6.5, 6.5],
       [-6.5, 6.5],
+    ],
+  },
+
+  // Battery Holders
+  battery_cr2032: {
+    type: 'battery_cr2032',
+    name: 'CR2032 Coin Cell Holder',
+    height: 5,
+    pads: [
+      { pos: [0, 10], dia: 2.5 },
+      { pos: [20, 10], dia: 2.5 },
+    ],
+    holes: [
+      { pos: [0, 10], dia: 1.5 },
+      { pos: [20, 10], dia: 1.5 },
+    ],
+    outline: [
+      [-2, -2],
+      [22, -2],
+      [22, 22],
+      [-2, 22],
+    ],
+  },
+
+  battery_aa_holder: {
+    type: 'battery_aa_holder',
+    name: 'AA Battery Holder (Single)',
+    height: 15,
+    pads: [
+      { pos: [0, 0], dia: 2.5 },
+      { pos: [0, 52], dia: 2.5 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.5 },
+      { pos: [0, 52], dia: 1.5 },
+    ],
+    outline: [
+      [-10, -3],
+      [10, -3],
+      [10, 55],
+      [-10, 55],
+    ],
+  },
+
+  battery_aaa_holder: {
+    type: 'battery_aaa_holder',
+    name: 'AAA Battery Holder (Single)',
+    height: 12,
+    pads: [
+      { pos: [0, 0], dia: 2.0 },
+      { pos: [0, 46], dia: 2.0 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.2 },
+      { pos: [0, 46], dia: 1.2 },
+    ],
+    outline: [
+      [-7, -3],
+      [7, -3],
+      [7, 49],
+      [-7, 49],
+    ],
+  },
+
+  battery_9v_holder: {
+    type: 'battery_9v_holder',
+    name: '9V Battery Holder (Snap)',
+    height: 25,
+    pads: [
+      { pos: [0, 0], dia: 2.5 },
+      { pos: [13, 0], dia: 2.5 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.5 },
+      { pos: [13, 0], dia: 1.5 },
+    ],
+    outline: [
+      [-3, -5],
+      [29, -5],
+      [29, 50],
+      [-3, 50],
+    ],
+  },
+
+  battery_2xaa_holder: {
+    type: 'battery_2xaa_holder',
+    name: 'AA Battery Holder (2x Series)',
+    height: 15,
+    pads: [
+      { pos: [0, 0], dia: 2.5 },
+      { pos: [30, 0], dia: 2.5 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.5 },
+      { pos: [30, 0], dia: 1.5 },
+    ],
+    outline: [
+      [-10, -3],
+      [40, -3],
+      [40, 55],
+      [-10, 55],
+    ],
+  },
+
+  battery_4xaa_holder: {
+    type: 'battery_4xaa_holder',
+    name: 'AA Battery Holder (4x, 6V)',
+    height: 15,
+    pads: [
+      { pos: [0, 0], dia: 2.5 },
+      { pos: [60, 0], dia: 2.5 },
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.5 },
+      { pos: [60, 0], dia: 1.5 },
+    ],
+    outline: [
+      [-10, -3],
+      [70, -3],
+      [70, 55],
+      [-10, 55],
     ],
   },
 };

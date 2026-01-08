@@ -19,9 +19,10 @@
 - Mounting holes, magnet recesses, and press‑fit features for enclosures
 
 ### Component Library
-- 100+ footprints across 25 categories: passives, semiconductors, headers, switches, ICs, MCUs, displays, audio, sensors, motors, and more
+- 120+ footprints across 30 categories: passives, semiconductors, headers, switches, ICs, MCUs (Arduino, ESP32, Raspberry Pi Pico, Teensy, Daisy Seed), displays, audio, sensors, motors, Bluetooth modules (HC-05, HC-06, HM-10, nRF52840), SD card modules, battery holders, joysticks, and more
 - Drag‑and‑drop placement with grid snapping, rotation, and search
 - Auto‑generated designators (R1, C1, U1, etc.) and annotations
+- Beginner-friendly tooltips throughout the UI
 
 ### Routing
 - Multiple routing modes: manual, Manhattan, spline, and auto‑router with obstacle avoidance
@@ -30,6 +31,9 @@
 
 ### Auto‑Assembly
 - Intelligent placement engine with multiple layout strategies (grid, compact, symmetric, flow, radial)
+- Auto-detect connections with pinout database (120+ component types with VCC/GND/signal definitions)
+- User constraints: zone placement, edge alignment, net naming, keep-out areas
+- Orientation optimization for minimal wire crossings
 - Connection‑aware auto‑routing with quality scoring and optimization
 - Wizard workflow: select → connect → arrange → preview
 

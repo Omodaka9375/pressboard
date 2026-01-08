@@ -147,57 +147,95 @@ export type MagnetPolarity = 'N' | 'S';
 
 export type VentPattern = 'slots' | 'honeycomb' | 'grid' | 'none';
 
+export type EnclosureStyle = 'lid-only' | 'split-case' | 'tray';
+
 export type MagnetPlacement = {
   id: string;
-  componentId: string; // Reference to magnet component
+  componentId: string;
   polarity: MagnetPolarity;
-  x: number; // Position X
-  y: number; // Position Y
-  diameter: number; // Magnet diameter in mm
-  thickness: number; // Magnet thickness in mm
+  x: number;
+  y: number;
+  diameter: number;
+  thickness: number;
 };
 
 export type PressurePad = {
   id: string;
-  componentId: string; // Component this pad presses
-  pos: Vec2; // Position on lid (same as component pos)
-  x: number; // Position X (same as pos[0])
-  y: number; // Position Y (same as pos[1])
-  width: number; // Pad width in mm
-  height: number; // Pad height in mm (boss height extending from lid)
-  diameter: number; // Pad diameter in mm
+  componentId: string;
+  pos: Vec2;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  diameter: number;
   material: 'plastic' | 'foam' | 'rubber';
 };
 
 export type ConnectorCutout = {
   id: string;
-  componentId: string; // Reference to connector component
-  type: 'usb' | 'barrel' | 'jack_35mm' | 'jack_635mm' | 'custom';
+  componentId: string;
+  type: 'usb' | 'barrel' | 'jack_35mm' | 'jack_635mm' | 'midi' | 'custom';
   wall: 'front' | 'back' | 'left' | 'right';
-  x: number; // Position X
-  y: number; // Position Y
-  z: number; // Position Z
+  x: number;
+  y: number;
+  z: number;
   width: number;
   height: number;
 };
 
+export type ScrewBoss = {
+  id: string;
+  x: number;
+  y: number;
+  outerDiameter: number;
+  innerDiameter: number;
+  height: number;
+  insertType: 'none' | 'heat-set' | 'self-tap';
+};
+
+export type EnclosureFoot = {
+  id: string;
+  x: number;
+  y: number;
+  diameter: number;
+  height: number;
+  style: 'round' | 'square' | 'rubber-pad';
+};
+
+export type LabelArea = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  depth: number;
+  text?: string;
+};
+
 export type Enclosure = {
   enabled: boolean;
-  wallThickness: number; // mm (default 2)
-  lidHeight: number; // mm (auto-calculated or manual)
-  cornerRadius: number; // mm (default 2)
-  clearance: number; // mm above tallest component (default 2)
-  snapFitTolerance: number; // mm (default 0.2)
+  style: EnclosureStyle;
+  wallThickness: number;
+  lidHeight: number;
+  baseHeight: number;
+  cornerRadius: number;
+  clearance: number;
+  snapFitTolerance: number;
   ventilation: {
     enabled: boolean;
     pattern: VentPattern;
     position: 'top' | 'sides' | 'both';
-    slotWidth: number; // mm
-    slotSpacing: number; // mm
+    slotWidth: number;
+    slotSpacing: number;
   };
   pressurePads: PressurePad[];
   magnetPlacements: MagnetPlacement[];
   connectorCutouts: ConnectorCutout[];
+  screwBosses: ScrewBoss[];
+  feet: EnclosureFoot[];
+  labelAreas: LabelArea[];
+  showScrewBosses: boolean;
+  showFeet: boolean;
 };
 
 // =====================
@@ -206,11 +244,56 @@ export type Enclosure = {
 
 export type ComponentRole = 'input' | 'output' | 'power' | 'ground' | 'signal' | 'connector';
 
+/** Standard pad function roles for auto-detection. */
+export type PadRole =
+  | 'vcc'
+  | 'gnd'
+  | 'signal'
+  | 'data'
+  | 'clock'
+  | 'enable'
+  | 'output'
+  | 'input'
+  | 'nc';
+
+/** Known pinout definition for a component type. */
+export type ComponentPinout = {
+  type: string;
+  pins: { index: number; role: PadRole; name: string; voltage?: number }[];
+};
+
+/** Placement zone on the board. */
+export type PlacementZone =
+  | 'center'
+  | 'top'
+  | 'bottom'
+  | 'left'
+  | 'right'
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-right';
+
+/** Edge preference for connector placement. */
+export type EdgePreference = 'front' | 'back' | 'left' | 'right' | 'any';
+
+/** Constraint for component placement. */
+export type PlacementConstraint = {
+  componentId: string;
+  zone?: PlacementZone;
+  edge?: EdgePreference;
+  locked?: boolean;
+  lockedPos?: Vec2;
+  lockedRotation?: number;
+  keepTogether?: string[];
+};
+
 export type AssemblyComponent = {
   id: string;
-  type: string; // Footprint type
+  type: string;
   quantity: number;
   role?: ComponentRole;
+  constraint?: PlacementConstraint;
 };
 
 export type ConnectionDef = {
@@ -219,6 +302,9 @@ export type ConnectionDef = {
   to: { componentIndex: number; padIndex: number };
   netName?: string;
   isPower?: boolean;
+  isGround?: boolean;
+  isBus?: boolean;
+  autoDetected?: boolean;
 };
 
 export type ArrangementMetrics = {
@@ -230,11 +316,11 @@ export type ArrangementMetrics = {
 
 export type ArrangementOption = {
   id: string;
-  name: string; // "Compact", "Symmetric", "Linear", etc.
+  name: string;
   description: string;
   components: Component[];
   routes: Route[];
-  score: number; // Quality score (0-100)
+  score: number;
   metrics: ArrangementMetrics;
 };
 

@@ -1,6 +1,6 @@
 import { useRef, useMemo, Suspense, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, Line } from '@react-three/drei';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Grid, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useProjectStore } from '../stores/projectStore';
 import { useEnclosureStore } from '../stores/enclosureStore';
@@ -103,7 +103,7 @@ type Component3DProps = {
   boardThickness: number;
 };
 
-/** Create resistor 3D model. */
+/** Create resistor 3D model with realistic color bands. */
 const Resistor3D = ({
   position,
   rotation,
@@ -119,6 +119,15 @@ const Resistor3D = ({
         <cylinderGeometry args={[1.2, 1.2, 7, 16]} />
         <meshStandardMaterial color="#c4a484" roughness={0.6} />
       </mesh>
+      {/* End caps - tapered ends */}
+      <mesh position={[0, -3.8, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.6, 1.2, 0.6, 12]} />
+        <meshStandardMaterial color="#c4a484" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 3.8, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[1.2, 0.6, 0.6, 12]} />
+        <meshStandardMaterial color="#c4a484" roughness={0.6} />
+      </mesh>
       {/* Color bands - positioned along the body */}
       {[-2.5, -1.5, -0.5, 1.5].map((yOffset, i) => (
         <mesh key={i} position={[0, yOffset, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
@@ -126,6 +135,11 @@ const Resistor3D = ({
           <meshStandardMaterial color={['#a52a2a', '#000000', '#ff8c00', '#ffd700'][i]} />
         </mesh>
       ))}
+      {/* Tolerance band (gold) */}
+      <mesh position={[0, 2.8, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.21, 0.15, 8, 16]} />
+        <meshStandardMaterial color="#d4af37" metalness={0.6} />
+      </mesh>
       {/* Leads - extending from both ends */}
       <mesh position={[0, -5.5, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.3, 0.3, 4, 8]} />
@@ -139,7 +153,7 @@ const Resistor3D = ({
   );
 };
 
-/** Create capacitor 3D model. */
+/** Create capacitor 3D model with K-groove marking. */
 const Capacitor3D = ({
   position,
   rotation,
@@ -155,15 +169,37 @@ const Capacitor3D = ({
         <cylinderGeometry args={[2.5, 2.5, 6, 20]} />
         <meshStandardMaterial color="#1a1a3a" roughness={0.4} />
       </mesh>
-      {/* Top marking */}
+      {/* Top vent (K-groove pattern) */}
       <mesh position={[0, 0, 7.1]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[2.4, 2.4, 0.2, 20]} />
         <meshStandardMaterial color="#333355" roughness={0.5} />
       </mesh>
-      {/* Stripe */}
+      {/* K-groove lines on top */}
+      <mesh position={[0, 0, 7.25]}>
+        <boxGeometry args={[4, 0.2, 0.1]} />
+        <meshStandardMaterial color="#222244" />
+      </mesh>
+      <mesh position={[1, 0.8, 7.25]} rotation={[0, 0, 0.5]}>
+        <boxGeometry args={[2, 0.2, 0.1]} />
+        <meshStandardMaterial color="#222244" />
+      </mesh>
+      <mesh position={[1, -0.8, 7.25]} rotation={[0, 0, -0.5]}>
+        <boxGeometry args={[2, 0.2, 0.1]} />
+        <meshStandardMaterial color="#222244" />
+      </mesh>
+      {/* Polarity stripe (negative side) */}
       <mesh position={[2.3, 0, 4]}>
-        <boxGeometry args={[0.3, 0.5, 6]} />
+        <boxGeometry args={[0.3, 0.8, 6]} />
         <meshStandardMaterial color="#cccccc" />
+      </mesh>
+      {/* Minus signs on stripe */}
+      <mesh position={[2.45, 0, 5.5]}>
+        <boxGeometry args={[0.05, 0.5, 0.15]} />
+        <meshStandardMaterial color="#666666" />
+      </mesh>
+      <mesh position={[2.45, 0, 3.5]}>
+        <boxGeometry args={[0.05, 0.5, 0.15]} />
+        <meshStandardMaterial color="#666666" />
       </mesh>
       {/* Leads - going down through board */}
       <mesh position={[-1.25, 0, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
@@ -264,19 +300,41 @@ const DIPIC3D = ({
           <meshStandardMaterial color="#333333" />
         </mesh>
       )}
-      {/* Pins */}
+      {/* Pins - with gull-wing shape */}
       {Array.from({ length: pinsPerSide }).map((_, i) => (
         <group key={`left-${i}`}>
-          <mesh position={[-1, i * pinSpacing, 0.5]}>
-            <boxGeometry args={[1.5, 0.5, 1]} />
+          {/* Horizontal part from body */}
+          <mesh position={[-1.5, i * pinSpacing, 1.5]}>
+            <boxGeometry args={[2, 0.4, 0.2]} />
+            <meshStandardMaterial color="#b0b0b0" metalness={0.7} roughness={0.3} />
+          </mesh>
+          {/* Vertical part going down */}
+          <mesh position={[-2.3, i * pinSpacing, 0.8]}>
+            <boxGeometry args={[0.4, 0.4, 1.6]} />
+            <meshStandardMaterial color="#b0b0b0" metalness={0.7} roughness={0.3} />
+          </mesh>
+          {/* Foot */}
+          <mesh position={[-2.8, i * pinSpacing, 0.1]}>
+            <boxGeometry args={[1.4, 0.4, 0.2]} />
             <meshStandardMaterial color="#b0b0b0" metalness={0.7} roughness={0.3} />
           </mesh>
         </group>
       ))}
       {Array.from({ length: pinsPerSide }).map((_, i) => (
         <group key={`right-${i}`}>
-          <mesh position={[width, i * pinSpacing, 0.5]}>
-            <boxGeometry args={[1.5, 0.5, 1]} />
+          {/* Horizontal part from body */}
+          <mesh position={[width + 0.5, i * pinSpacing, 1.5]}>
+            <boxGeometry args={[2, 0.4, 0.2]} />
+            <meshStandardMaterial color="#b0b0b0" metalness={0.7} roughness={0.3} />
+          </mesh>
+          {/* Vertical part going down */}
+          <mesh position={[width + 1.3, i * pinSpacing, 0.8]}>
+            <boxGeometry args={[0.4, 0.4, 1.6]} />
+            <meshStandardMaterial color="#b0b0b0" metalness={0.7} roughness={0.3} />
+          </mesh>
+          {/* Foot */}
+          <mesh position={[width + 1.8, i * pinSpacing, 0.1]}>
+            <boxGeometry args={[1.4, 0.4, 0.2]} />
             <meshStandardMaterial color="#b0b0b0" metalness={0.7} roughness={0.3} />
           </mesh>
         </group>
@@ -394,7 +452,7 @@ const AudioJack3D = ({
   );
 };
 
-/** Create button 3D model. */
+/** Create tactile button 3D model. */
 const Button3D = ({
   position,
   rotation,
@@ -405,24 +463,56 @@ const Button3D = ({
   size?: number;
 }) => {
   const rotRad = (rotation * Math.PI) / 180;
+  const isArcade = size > 12;
 
   return (
     <group position={position} rotation={[0, 0, rotRad]}>
-      {/* Base */}
+      {/* Base housing */}
       <mesh position={[size / 2, size / 2, 1.5]}>
         <boxGeometry args={[size, size, 3]} />
         <meshStandardMaterial color="#2a2a2a" roughness={0.6} />
       </mesh>
+      {/* Inner recess */}
+      <mesh position={[size / 2, size / 2, 3.1]}>
+        <boxGeometry args={[size * 0.7, size * 0.7, 0.3]} />
+        <meshStandardMaterial color="#1a1a1a" />
+      </mesh>
       {/* Button cap - upright cylinder */}
       <mesh position={[size / 2, size / 2, 4]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[size / 3, size / 3, 2, 16]} />
-        <meshStandardMaterial color="#444444" roughness={0.5} />
+        <meshStandardMaterial color={isArcade ? '#dd3333' : '#444444'} roughness={0.5} />
       </mesh>
+      {/* Cap highlight ring */}
+      <mesh position={[size / 2, size / 2, 5.1]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[size / 3.5, 0.1, 8, 16]} />
+        <meshStandardMaterial color="#555555" />
+      </mesh>
+      {/* Legs (for tactile buttons) */}
+      {!isArcade && (
+        <>
+          <mesh position={[0, 0, -0.5]}>
+            <boxGeometry args={[0.5, 0.5, 1.5]} />
+            <meshStandardMaterial color="#888888" metalness={0.7} />
+          </mesh>
+          <mesh position={[size, 0, -0.5]}>
+            <boxGeometry args={[0.5, 0.5, 1.5]} />
+            <meshStandardMaterial color="#888888" metalness={0.7} />
+          </mesh>
+          <mesh position={[0, size, -0.5]}>
+            <boxGeometry args={[0.5, 0.5, 1.5]} />
+            <meshStandardMaterial color="#888888" metalness={0.7} />
+          </mesh>
+          <mesh position={[size, size, -0.5]}>
+            <boxGeometry args={[0.5, 0.5, 1.5]} />
+            <meshStandardMaterial color="#888888" metalness={0.7} />
+          </mesh>
+        </>
+      )}
     </group>
   );
 };
 
-/** Create potentiometer 3D model. */
+/** Create potentiometer 3D model with knurled shaft. */
 const Potentiometer3D = ({
   position,
   rotation,
@@ -441,21 +531,43 @@ const Potentiometer3D = ({
         <cylinderGeometry args={[size / 2, size / 2, 4, 20]} />
         <meshStandardMaterial color="#3d3d3d" roughness={0.7} />
       </mesh>
-      {/* Shaft - upright */}
-      <mesh position={[2.5, 2.5, 7]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[3, 3, 6, 16]} />
+      {/* Body ring detail */}
+      <mesh position={[2.5, 2.5, 0.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[size / 2 - 0.2, 0.3, 8, 20]} />
+        <meshStandardMaterial color="#4d4d4d" />
+      </mesh>
+      {/* Threaded bushing */}
+      <mesh position={[2.5, 2.5, 4.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[3.5, 3.5, 1, 6]} />
         <meshStandardMaterial color="#888888" metalness={0.7} />
       </mesh>
+      {/* Shaft - with knurling effect */}
+      <mesh position={[2.5, 2.5, 7.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[3, 3, 5, 24]} />
+        <meshStandardMaterial color="#888888" metalness={0.7} roughness={0.5} />
+      </mesh>
+      {/* Knurling rings */}
+      {[6, 7, 8, 9].map((z) => (
+        <mesh key={z} position={[2.5, 2.5, z]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[3.05, 0.08, 4, 24]} />
+          <meshStandardMaterial color="#666666" metalness={0.6} />
+        </mesh>
+      ))}
       {/* Knob indicator - on top of shaft */}
       <mesh position={[2.5, 4.5, 10.5]}>
         <boxGeometry args={[0.5, 2, 1]} />
         <meshStandardMaterial color="#ffffff" />
       </mesh>
+      {/* Mounting nut */}
+      <mesh position={[2.5, 2.5, 5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[4, 4, 0.8, 6]} />
+        <meshStandardMaterial color="#999999" metalness={0.8} />
+      </mesh>
     </group>
   );
 };
 
-/** Create encoder 3D model. */
+/** Create encoder 3D model with knurled shaft. */
 const Encoder3D = ({
   position,
   rotation,
@@ -472,6 +584,11 @@ const Encoder3D = ({
         <boxGeometry args={[11, 11, 4]} />
         <meshStandardMaterial color="#2a2a2a" roughness={0.7} />
       </mesh>
+      {/* Push button on top of body */}
+      <mesh position={[6, 3.5, 4.2]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[1, 1, 0.4, 12]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
       {/* Shaft base */}
       <mesh position={[2.5, 3.5, 5]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[3.5, 3.5, 2, 20]} />
@@ -479,13 +596,29 @@ const Encoder3D = ({
       </mesh>
       {/* Shaft - knurled knob */}
       <mesh position={[2.5, 3.5, 9]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[3, 3, 6, 20]} />
+        <cylinderGeometry args={[3, 3, 6, 24]} />
         <meshStandardMaterial color="#777777" metalness={0.7} roughness={0.4} />
       </mesh>
+      {/* Knurling rings */}
+      {[7, 8, 9, 10, 11].map((z) => (
+        <mesh key={z} position={[2.5, 3.5, z]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[3.05, 0.06, 4, 24]} />
+          <meshStandardMaterial color="#555555" metalness={0.6} />
+        </mesh>
+      ))}
       {/* D-shaft flat indicator - on side of shaft */}
       <mesh position={[2.5, 5.8, 9]}>
         <boxGeometry args={[1, 0.8, 6]} />
         <meshStandardMaterial color="#666666" metalness={0.6} />
+      </mesh>
+      {/* Mounting tabs */}
+      <mesh position={[-3, 3.5, 0]}>
+        <boxGeometry args={[2, 2, 0.5]} />
+        <meshStandardMaterial color="#888888" metalness={0.6} />
+      </mesh>
+      <mesh position={[8, 3.5, 0]}>
+        <boxGeometry args={[2, 2, 0.5]} />
+        <meshStandardMaterial color="#888888" metalness={0.6} />
       </mesh>
     </group>
   );
@@ -674,6 +807,258 @@ const Switch3D = ({
   );
 };
 
+/** Create joystick 3D model. */
+const Joystick3D = ({
+  position,
+  rotation,
+  isThumb = false,
+}: {
+  position: [number, number, number];
+  rotation: number;
+  isThumb?: boolean;
+}) => {
+  const rotRad = (rotation * Math.PI) / 180;
+  const scale = isThumb ? 1.5 : 1;
+
+  return (
+    <group position={position} rotation={[0, 0, rotRad]}>
+      {/* Base housing */}
+      <mesh position={[5 * scale, 10 * scale, 2]}>
+        <boxGeometry args={[15 * scale, 20 * scale, 4]} />
+        <meshStandardMaterial color="#2a2a2a" roughness={0.7} />
+      </mesh>
+      {/* Gimbal mount */}
+      <mesh position={[5 * scale, 10 * scale, 5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[6 * scale, 6 * scale, 2, 16]} />
+        <meshStandardMaterial color="#3a3a3a" />
+      </mesh>
+      {/* Stick shaft */}
+      <mesh position={[5 * scale, 10 * scale, 12]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[2 * scale, 2 * scale, 12, 12]} />
+        <meshStandardMaterial color="#555555" metalness={0.3} />
+      </mesh>
+      {/* Stick cap */}
+      <mesh position={[5 * scale, 10 * scale, 18]} rotation={[Math.PI / 2, 0, 0]}>
+        <sphereGeometry args={[4 * scale, 16, 16]} />
+        <meshStandardMaterial color={isThumb ? '#333333' : '#1a1a1a'} roughness={0.5} />
+      </mesh>
+      {/* Grip texture on cap */}
+      {isThumb && (
+        <mesh position={[5 * scale, 10 * scale, 22]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[3.5 * scale, 0.3, 6, 20]} />
+          <meshStandardMaterial color="#222222" />
+        </mesh>
+      )}
+    </group>
+  );
+};
+
+/** Create battery holder 3D model. */
+const Battery3D = ({
+  position,
+  rotation,
+  type,
+}: {
+  position: [number, number, number];
+  rotation: number;
+  type: 'cr2032' | 'aa' | 'aaa' | '9v';
+}) => {
+  const rotRad = (rotation * Math.PI) / 180;
+
+  if (type === 'cr2032') {
+    return (
+      <group position={position} rotation={[0, 0, rotRad]}>
+        {/* Holder base */}
+        <mesh position={[10, 10, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[11, 11, 3, 20]} />
+          <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
+        </mesh>
+        {/* Battery recess */}
+        <mesh position={[10, 10, 3.2]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[10.2, 10.2, 3.5, 20]} />
+          <meshStandardMaterial color="#333333" />
+        </mesh>
+        {/* Battery (silver) */}
+        <mesh position={[10, 10, 3.5]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[10, 10, 3.2, 20]} />
+          <meshStandardMaterial color="#c0c0c0" metalness={0.7} roughness={0.3} />
+        </mesh>
+        {/* + marking */}
+        <mesh position={[10, 10, 5.2]}>
+          <boxGeometry args={[8, 1, 0.1]} />
+          <meshStandardMaterial color="#888888" />
+        </mesh>
+        <mesh position={[10, 10, 5.2]}>
+          <boxGeometry args={[1, 8, 0.1]} />
+          <meshStandardMaterial color="#888888" />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (type === '9v') {
+    return (
+      <group position={position} rotation={[0, 0, rotRad]}>
+        {/* Holder base */}
+        <mesh position={[13, 24, 4]}>
+          <boxGeometry args={[28, 50, 8]} />
+          <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
+        </mesh>
+        {/* Battery body */}
+        <mesh position={[13, 24, 15]}>
+          <boxGeometry args={[26, 48, 17]} />
+          <meshStandardMaterial color="#2b5f2b" roughness={0.5} />
+        </mesh>
+        {/* Top terminals */}
+        <mesh position={[8, 24, 24]}>
+          <cylinderGeometry args={[3, 3, 2, 8]} />
+          <meshStandardMaterial color="#888888" metalness={0.6} />
+        </mesh>
+        <mesh position={[18, 24, 24]}>
+          <cylinderGeometry args={[2, 2, 2, 8]} />
+          <meshStandardMaterial color="#888888" metalness={0.6} />
+        </mesh>
+      </group>
+    );
+  }
+
+  // AA or AAA battery holder
+  const isAA = type === 'aa';
+  const length = isAA ? 50 : 44;
+  const diameter = isAA ? 14 : 10;
+
+  return (
+    <group position={position} rotation={[0, 0, rotRad]}>
+      {/* Holder base */}
+      <mesh position={[diameter / 2 + 2, length / 2, 3]}>
+        <boxGeometry args={[diameter + 6, length + 4, 6]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
+      </mesh>
+      {/* Battery - lying horizontal */}
+      <mesh
+        position={[diameter / 2 + 2, length / 2, diameter / 2 + 3]}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <cylinderGeometry args={[diameter / 2, diameter / 2, length - 4, 16]} />
+        <meshStandardMaterial color="#2b5f2b" roughness={0.5} />
+      </mesh>
+      {/* Positive terminal */}
+      <mesh
+        position={[diameter / 2 + 2, length - 2, diameter / 2 + 3]}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <cylinderGeometry args={[2.5, 2.5, 2, 8]} />
+        <meshStandardMaterial color="#c0c0c0" metalness={0.7} />
+      </mesh>
+      {/* Spring contact (negative) */}
+      <mesh position={[diameter / 2 + 2, 2, diameter / 2 + 3]}>
+        <torusGeometry args={[3, 0.5, 4, 8]} />
+        <meshStandardMaterial color="#888888" metalness={0.5} />
+      </mesh>
+    </group>
+  );
+};
+
+/** Create Bluetooth module 3D model. */
+const Bluetooth3D = ({
+  position,
+  rotation,
+  moduleType,
+}: {
+  position: [number, number, number];
+  rotation: number;
+  moduleType: 'hc05' | 'hc06' | 'hm10' | 'rn42' | 'nrf52840';
+}) => {
+  const rotRad = (rotation * Math.PI) / 180;
+
+  // Module dimensions based on type
+  const dims: Record<string, { w: number; h: number; d: number }> = {
+    hc05: { w: 15, h: 36, d: 5 },
+    hc06: { w: 15, h: 36, d: 5 },
+    hm10: { w: 15, h: 28, d: 4 },
+    rn42: { w: 15.5, h: 26, d: 3 },
+    nrf52840: { w: 17.24, h: 30.48, d: 4 },
+  };
+  const { w, h, d } = dims[moduleType] || dims.hc05;
+
+  return (
+    <group position={position} rotation={[0, 0, rotRad]}>
+      {/* PCB base */}
+      <mesh position={[w / 2 - 2, h / 2, 1]}>
+        <boxGeometry args={[w, h, 1.6]} />
+        <meshStandardMaterial color="#1a5c1a" roughness={0.7} />
+      </mesh>
+      {/* Main IC/module */}
+      <mesh position={[w / 2 - 2, h / 2 - 5, d / 2 + 1.8]}>
+        <boxGeometry args={[w - 4, h * 0.6, d]} />
+        <meshStandardMaterial color="#2a2a2a" roughness={0.5} />
+      </mesh>
+      {/* Antenna section */}
+      <mesh position={[w / 2 - 2, h - 6, 2]}>
+        <boxGeometry args={[10, 8, 1]} />
+        <meshStandardMaterial color="#4a4a4a" metalness={0.3} />
+      </mesh>
+      {/* Status LED */}
+      <mesh position={[w - 5, 3, 2.5]}>
+        <sphereGeometry args={[1, 8, 8]} />
+        <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.3} />
+      </mesh>
+      {/* Crystal */}
+      {(moduleType === 'hc05' || moduleType === 'hc06') && (
+        <mesh position={[4, h / 2, 2.5]}>
+          <boxGeometry args={[4, 2, 1.5]} />
+          <meshStandardMaterial color="#c0c0c0" metalness={0.6} />
+        </mesh>
+      )}
+    </group>
+  );
+};
+
+/** Create SD card module 3D model. */
+const SDCard3D = ({
+  position,
+  rotation,
+  isMicro,
+}: {
+  position: [number, number, number];
+  rotation: number;
+  isMicro: boolean;
+}) => {
+  const rotRad = (rotation * Math.PI) / 180;
+  const w = isMicro ? 18 : 24;
+  const h = isMicro ? 22 : 32;
+
+  return (
+    <group position={position} rotation={[0, 0, rotRad]}>
+      {/* PCB base */}
+      <mesh position={[w / 2 - 2, h / 2, 1]}>
+        <boxGeometry args={[w, h, 1.6]} />
+        <meshStandardMaterial color="#1a1a5c" roughness={0.7} />
+      </mesh>
+      {/* Card slot housing */}
+      <mesh position={[w / 2 - 2, h / 2 + 3, 4]}>
+        <boxGeometry args={[w - 4, h * 0.6, 4]} />
+        <meshStandardMaterial color="#2a2a2a" roughness={0.5} />
+      </mesh>
+      {/* Card slot opening */}
+      <mesh position={[w / 2 - 2, h - 2, 4]}>
+        <boxGeometry args={[isMicro ? 12 : 26, 2, 2.5]} />
+        <meshStandardMaterial color="#1a1a1a" />
+      </mesh>
+      {/* Sample card sticking out */}
+      <mesh position={[w / 2 - 2, h + 2, 4]}>
+        <boxGeometry args={[isMicro ? 11 : 24, 6, isMicro ? 1 : 2]} />
+        <meshStandardMaterial color="#333333" />
+      </mesh>
+      {/* Voltage regulator */}
+      <mesh position={[4, 4, 2.5]}>
+        <boxGeometry args={[5, 4, 2]} />
+        <meshStandardMaterial color="#1a1a1a" />
+      </mesh>
+    </group>
+  );
+};
+
 /** Create connector 3D model. */
 const Connector3D = ({
   position,
@@ -762,6 +1147,7 @@ const Component3D = ({ component, boardThickness }: Component3DProps) => {
       mcu_attiny85: 8,
       mcu_atmega328: 28,
       mcu_arduino_nano: 30,
+      mcu_arduino_uno: 28,
       mcu_pro_micro: 24,
       mcu_esp32_devkit: 30,
       mcu_esp32_s3: 44,
@@ -772,6 +1158,7 @@ const Component3D = ({ component, boardThickness }: Component3DProps) => {
     const pinCount = pinCounts[type] || 30;
     const colors: Record<string, string> = {
       mcu_arduino_nano: '#008080',
+      mcu_arduino_uno: '#008080',
       mcu_pro_micro: '#aa0000',
       mcu_esp32_devkit: '#333333',
       mcu_esp32_s3: '#222222',
@@ -798,6 +1185,7 @@ const Component3D = ({ component, boardThickness }: Component3DProps) => {
       mcu_esp32_devkit: 24.86,
       mcu_esp32_s3: 24.86,
       mcu_arduino_nano: 17.24,
+      mcu_arduino_uno: 53.34,
       mcu_pro_micro: 17.24,
       mcu_raspberry_pico: 19.78,
       mcu_daisy_seed: 17.24,
@@ -945,6 +1333,53 @@ const Component3D = ({ component, boardThickness }: Component3DProps) => {
     return <Switch3D position={pos} rotation={component.rotation} isPDT={type === 'switch_spdt'} />;
   }
 
+  // Joysticks
+  if (type === 'joystick_psp') {
+    return <Joystick3D position={pos} rotation={component.rotation} isThumb={false} />;
+  }
+  if (type === 'joystick_thumb') {
+    return <Joystick3D position={pos} rotation={component.rotation} isThumb={true} />;
+  }
+
+  // Battery holders
+  if (type === 'battery_cr2032') {
+    return <Battery3D position={pos} rotation={component.rotation} type="cr2032" />;
+  }
+  if (type === 'battery_aa' || type === 'battery_aa_holder') {
+    return <Battery3D position={pos} rotation={component.rotation} type="aa" />;
+  }
+  if (type === 'battery_aaa' || type === 'battery_aaa_holder') {
+    return <Battery3D position={pos} rotation={component.rotation} type="aaa" />;
+  }
+  if (type === 'battery_9v' || type === 'battery_9v_holder') {
+    return <Battery3D position={pos} rotation={component.rotation} type="9v" />;
+  }
+
+  // Bluetooth modules
+  if (type.startsWith('bt_')) {
+    const btTypes: Record<string, 'hc05' | 'hc06' | 'hm10' | 'rn42' | 'nrf52840'> = {
+      bt_hc05: 'hc05',
+      bt_hc06: 'hc06',
+      bt_hm10: 'hm10',
+      bt_rn42: 'rn42',
+      bt_nrf52840: 'nrf52840',
+    };
+    return (
+      <Bluetooth3D
+        position={pos}
+        rotation={component.rotation}
+        moduleType={btTypes[type] || 'hc05'}
+      />
+    );
+  }
+
+  // SD Card modules
+  if (type.startsWith('sdcard_')) {
+    return (
+      <SDCard3D position={pos} rotation={component.rotation} isMicro={type.includes('micro')} />
+    );
+  }
+
   // Connectors
   if (type === 'connector_barrel' || type === 'connector_dc_barrel') {
     return <Connector3D position={pos} rotation={component.rotation} type="barrel" />;
@@ -1080,6 +1515,50 @@ const ClippingPlane = ({ position }: { position: number }) => {
   );
 };
 
+/** Animated loading spinner for 3D scene. */
+const LoadingSpinner = () => {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame((_, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.z += delta * 2;
+    }
+  });
+
+  return (
+    <Html center>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '12px',
+          color: '#888',
+          fontSize: '14px',
+        }}
+      >
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #333',
+            borderTop: '3px solid #6c63ff',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
+        <span>Loading 3D Preview...</span>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    </Html>
+  );
+};
+
 const Scene = ({ clipEnabled, clipPosition, explodedView, explodeOffset, showLid }: SceneProps) => {
   const clippingPlane = useMemo(
     () => new THREE.Plane(new THREE.Vector3(-1, 0, 0), clipPosition),
@@ -1098,7 +1577,7 @@ const Scene = ({ clipEnabled, clipPosition, explodedView, explodeOffset, showLid
       <directionalLight position={[50, 50, 50]} intensity={1} castShadow />
       <directionalLight position={[-50, -50, 50]} intensity={0.3} />
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<LoadingSpinner />}>
         {/* Board layer */}
         <group position={[0, 0, boardZ]}>
           <BoardMesh clippingPlane={clipEnabled ? clippingPlane : null} />

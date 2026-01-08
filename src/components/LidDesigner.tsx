@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useProjectStore } from '../stores/projectStore';
 import { useEnclosureStore } from '../stores/enclosureStore';
 import { getComponentHeight } from '../data/footprints';
-import type { VentPattern } from '../types';
+import type { VentPattern, EnclosureStyle } from '../types';
 
 /** Lid Designer panel for configuring enclosure and pressure pads. */
 const LidDesigner = () => {
@@ -11,8 +11,10 @@ const LidDesigner = () => {
     enclosure,
     showLid,
     setEnabled,
+    setStyle,
     setWallThickness,
     setLidHeight,
+    setBaseHeight,
     setCornerRadius,
     setClearance,
     setVentilationEnabled,
@@ -21,8 +23,15 @@ const LidDesigner = () => {
     generatePressurePads,
     generateMagnetPlacements,
     generateConnectorCutouts,
+    generateScrewBosses,
+    generateFeet,
+    updateConnectorCutout,
+    removeScrewBoss,
+    removeFoot,
     toggleMagnetPolarity,
     setShowLid,
+    setShowScrewBosses,
+    setShowFeet,
     calculateLidHeight,
   } = useEnclosureStore();
 
@@ -38,6 +47,18 @@ const LidDesigner = () => {
       setLidHeight(autoHeight);
     }
   }, [enclosure.enabled, project.components.length]);
+
+  // Auto-generate screw bosses and feet when style changes
+  useEffect(() => {
+    if (enclosure.enabled && enclosure.style !== 'lid-only') {
+      if (enclosure.screwBosses.length === 0) {
+        generateScrewBosses(project.board.boundary);
+      }
+      if (enclosure.feet.length === 0) {
+        generateFeet(project.board.boundary);
+      }
+    }
+  }, [enclosure.enabled, enclosure.style]);
 
   const magnetComponents = project.components.filter((c) => c.type.startsWith('magnet_'));
   const nonMagnetComponents = project.components.filter((c) => !c.type.startsWith('magnet_'));
@@ -58,6 +79,29 @@ const LidDesigner = () => {
 
       {enclosure.enabled && (
         <>
+          {/* Enclosure Style */}
+          <div className="section">
+            <h5>🎨 Enclosure Style</h5>
+            <div className="style-selector">
+              {(['lid-only', 'split-case', 'tray'] as EnclosureStyle[]).map((style) => (
+                <button
+                  key={style}
+                  className={`style-btn ${enclosure.style === style ? 'active' : ''}`}
+                  onClick={() => setStyle(style)}
+                >
+                  {style === 'lid-only' && '🔝 Lid Only'}
+                  {style === 'split-case' && '📦 Split Case'}
+                  {style === 'tray' && '🗃️ Tray'}
+                </button>
+              ))}
+            </div>
+            <p className="hint">
+              {enclosure.style === 'lid-only' && 'Press-fit lid covers the board'}
+              {enclosure.style === 'split-case' && 'Top + bottom shells with screw mounting'}
+              {enclosure.style === 'tray' && 'Shallow base with tall lid'}
+            </p>
+          </div>
+
           {/* Show Lid Toggle */}
           <div className="control-row">
             <label>
@@ -99,6 +143,21 @@ const LidDesigner = () => {
               />
               <span className="value">{enclosure.lidHeight}mm</span>
             </div>
+
+            {enclosure.style !== 'lid-only' && (
+              <div className="control-row">
+                <label>Base Height</label>
+                <input
+                  type="range"
+                  min="3"
+                  max="30"
+                  step="1"
+                  value={enclosure.baseHeight}
+                  onChange={(e) => setBaseHeight(Number(e.target.value))}
+                />
+                <span className="value">{enclosure.baseHeight}mm</span>
+              </div>
+            )}
 
             <div className="control-row">
               <label>Corner Radius</label>
@@ -244,6 +303,20 @@ const LidDesigner = () => {
                   return (
                     <div key={cutout.id} className="cutout-item">
                       <span className="type">{cutout.type.toUpperCase()}</span>
+                      <select
+                        className="wall-select"
+                        value={cutout.wall}
+                        onChange={(e) =>
+                          updateConnectorCutout(cutout.id, {
+                            wall: e.target.value as 'front' | 'back' | 'left' | 'right',
+                          })
+                        }
+                      >
+                        <option value="front">Front</option>
+                        <option value="back">Back</option>
+                        <option value="left">Left</option>
+                        <option value="right">Right</option>
+                      </select>
                       <span className="size">
                         {cutout.width}×{cutout.height}mm
                       </span>
@@ -251,6 +324,100 @@ const LidDesigner = () => {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Screw Bosses */}
+          {enclosure.style !== 'lid-only' && (
+            <div className="section">
+              <h5>
+                🔩 Screw Bosses ({enclosure.screwBosses.length})
+                <label className="toggle-label small">
+                  <input
+                    type="checkbox"
+                    checked={enclosure.showScrewBosses}
+                    onChange={(e) => setShowScrewBosses(e.target.checked)}
+                  />
+                </label>
+              </h5>
+              {enclosure.screwBosses.length === 0 ? (
+                <button
+                  className="auto-btn"
+                  onClick={() => generateScrewBosses(project.board.boundary)}
+                >
+                  🔄 Generate Corner Bosses
+                </button>
+              ) : (
+                <>
+                  <div className="boss-list">
+                    {enclosure.screwBosses.map((boss) => (
+                      <div key={boss.id} className="boss-item">
+                        <span className="pos">
+                          ({Math.round(boss.x)}, {Math.round(boss.y)})
+                        </span>
+                        <span className="insert-type">{boss.insertType}</span>
+                        <button
+                          className="remove-btn"
+                          onClick={() => removeScrewBoss(boss.id)}
+                          title="Remove"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    className="auto-btn"
+                    onClick={() => generateScrewBosses(project.board.boundary)}
+                  >
+                    🔄 Regenerate
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Feet */}
+          {enclosure.style !== 'lid-only' && (
+            <div className="section">
+              <h5>
+                🦶 Feet ({enclosure.feet.length})
+                <label className="toggle-label small">
+                  <input
+                    type="checkbox"
+                    checked={enclosure.showFeet}
+                    onChange={(e) => setShowFeet(e.target.checked)}
+                  />
+                </label>
+              </h5>
+              {enclosure.feet.length === 0 ? (
+                <button className="auto-btn" onClick={() => generateFeet(project.board.boundary)}>
+                  🔄 Generate Corner Feet
+                </button>
+              ) : (
+                <>
+                  <div className="foot-list">
+                    {enclosure.feet.map((foot) => (
+                      <div key={foot.id} className="foot-item">
+                        <span className="pos">
+                          ({Math.round(foot.x)}, {Math.round(foot.y)})
+                        </span>
+                        <span className="style">{foot.style}</span>
+                        <button
+                          className="remove-btn"
+                          onClick={() => removeFoot(foot.id)}
+                          title="Remove"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="auto-btn" onClick={() => generateFeet(project.board.boundary)}>
+                    🔄 Regenerate
+                  </button>
+                </>
+              )}
             </div>
           )}
         </>
@@ -444,11 +611,97 @@ const LidDesigner = () => {
           font-weight: 500;
         }
 
+        .cutout-item .wall-select {
+          padding: 2px 4px;
+          border-radius: 3px;
+          border: 1px solid var(--border-color);
+          background: var(--btn-bg);
+          color: var(--text-primary);
+          font-size: 10px;
+        }
+
         .more {
           color: var(--text-secondary);
           font-size: 10px;
           text-align: center;
           margin: 4px 0 0 0;
+        }
+
+        .style-selector {
+          display: flex;
+          gap: 4px;
+          margin-bottom: 8px;
+        }
+
+        .style-btn {
+          flex: 1;
+          padding: 8px 4px;
+          border: 1px solid var(--border-color);
+          background: var(--btn-bg);
+          color: var(--text-secondary);
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 10px;
+          text-align: center;
+          transition: all 0.15s;
+        }
+
+        .style-btn:hover {
+          background: var(--btn-hover);
+        }
+
+        .style-btn.active {
+          background: var(--accent);
+          color: white;
+          border-color: var(--accent);
+        }
+
+        .boss-list, .foot-list {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .boss-item, .foot-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          padding: 4px 8px;
+          background: var(--bg-primary);
+          border-radius: 4px;
+          font-size: 11px;
+        }
+
+        .boss-item .pos, .foot-item .pos {
+          font-family: monospace;
+          font-size: 10px;
+          color: var(--text-secondary);
+        }
+
+        .boss-item .insert-type, .foot-item .style {
+          font-size: 10px;
+          color: var(--text-primary);
+          background: var(--bg-sidebar);
+          padding: 2px 6px;
+          border-radius: 3px;
+        }
+
+        .remove-btn {
+          width: 18px;
+          height: 18px;
+          padding: 0;
+          border: none;
+          background: transparent;
+          color: var(--text-secondary);
+          cursor: pointer;
+          font-size: 10px;
+          border-radius: 3px;
+        }
+
+        .remove-btn:hover {
+          background: #e53935;
+          color: white;
         }
       `}</style>
     </div>
