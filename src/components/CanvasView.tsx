@@ -29,11 +29,17 @@ const CanvasView = () => {
     currentRoutePoints,
     addComponent,
     selectedComponent,
+    selectedComponents,
     selectComponent,
+    selectComponents,
+    addToSelection,
+    clearSelection,
     selectedRoute,
     selectRoute,
     updateComponentPosition,
+    updateComponentsPosition,
     updateComponentRotation,
+    removeComponents,
     isPlacingVia,
     addVia,
     setPlacingVia,
@@ -55,6 +61,16 @@ const CanvasView = () => {
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [gridSizeIndex, setGridSizeIndex] = useState(DEFAULT_GRID_INDEX);
   const gridSize = GRID_SIZES[gridSizeIndex];
+
+  // Multi-select box state
+  const [isSelectingBox, setIsSelectingBox] = useState(false);
+  const [selectBoxStart, setSelectBoxStart] = useState<Vec2 | null>(null);
+  const [selectBoxEnd, setSelectBoxEnd] = useState<Vec2 | null>(null);
+  const [wasSelectingBox, setWasSelectingBox] = useState(false); // Track if we just finished a selection
+
+  // Track last position for group dragging
+  const [lastDragPos, setLastDragPos] = useState<Vec2 | null>(null);
+  const [isDraggingGroup, setIsDraggingGroup] = useState(false);
 
   // Resize canvas to match container
   useEffect(() => {
@@ -116,12 +132,28 @@ const CanvasView = () => {
         setSnapEnabled((prev) => !prev);
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedComponent) {
+        // Delete selected components (multi or single)
+        if (selectedComponents.length > 0) {
+          removeComponents(selectedComponents);
+        } else if (selectedComponent) {
           useProjectStore.getState().removeComponent(selectedComponent);
         }
       }
+      if (e.key === 'Escape') {
+        clearSelection();
+        setIsSelectingBox(false);
+        setSelectBoxStart(null);
+        setSelectBoxEnd(null);
+      }
     },
-    [selectedComponent, project.components, updateComponentRotation]
+    [
+      selectedComponent,
+      selectedComponents,
+      project.components,
+      updateComponentRotation,
+      removeComponents,
+      clearSelection,
+    ]
   );
 
   useEffect(() => {
@@ -227,16 +259,26 @@ const CanvasView = () => {
     if (visibility.components) {
       ctx.globalAlpha = opacity.components;
       project.components.forEach((component) => {
-        drawComponent(
-          ctx,
-          component,
-          component.id === selectedComponent,
-          showComponentLabels,
-          showComponentPinout,
-          theme
-        );
+        const isSelected =
+          component.id === selectedComponent || selectedComponents.includes(component.id);
+        drawComponent(ctx, component, isSelected, showComponentLabels, showComponentPinout, theme);
       });
       ctx.globalAlpha = 1;
+    }
+
+    // Draw selection box if active
+    if (isSelectingBox && selectBoxStart && selectBoxEnd) {
+      ctx.strokeStyle = '#2196F3';
+      ctx.fillStyle = 'rgba(33, 150, 243, 0.1)';
+      ctx.lineWidth = 1 / zoom;
+      ctx.setLineDash([4 / zoom, 4 / zoom]);
+      const x = Math.min(selectBoxStart[0], selectBoxEnd[0]);
+      const y = Math.min(selectBoxStart[1], selectBoxEnd[1]);
+      const w = Math.abs(selectBoxEnd[0] - selectBoxStart[0]);
+      const h = Math.abs(selectBoxEnd[1] - selectBoxStart[1]);
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeRect(x, y, w, h);
+      ctx.setLineDash([]);
     }
 
     // Draw vias / drill holes
@@ -271,6 +313,7 @@ const CanvasView = () => {
     activeLayer,
     routingMode,
     selectedComponent,
+    selectedComponents,
     selectedRoute,
     visibility,
     opacity,
@@ -279,10 +322,19 @@ const CanvasView = () => {
     showComponentPinout,
     theme,
     canvasSize,
+    isSelectingBox,
+    selectBoxStart,
+    selectBoxEnd,
   ]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (isPanning) return;
+
+    // Skip click if we just finished a selection box
+    if (wasSelectingBox) {
+      setWasSelectingBox(false);
+      return;
+    }
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -334,10 +386,15 @@ const CanvasView = () => {
       return;
     }
 
-    // Component selection first
+    // Component selection with Shift for multi-select
     const clicked = findComponentAt(project.components, point);
     if (clicked) {
-      selectComponent(clicked.id);
+      if (e.shiftKey) {
+        // Shift-click: add to selection
+        addToSelection(clicked.id);
+      } else {
+        selectComponent(clicked.id);
+      }
       selectRoute(null);
       return;
     }
@@ -346,12 +403,12 @@ const CanvasView = () => {
     const clickedRouteIdx = findRouteAt(project.routes, point, 5);
     if (clickedRouteIdx !== null) {
       selectRoute(clickedRouteIdx);
-      selectComponent(null);
+      clearSelection();
       return;
     }
 
     // Clicked empty space - deselect all
-    selectComponent(null);
+    clearSelection();
     selectRoute(null);
   };
 
@@ -375,10 +432,26 @@ const CanvasView = () => {
 
     const [worldX, worldY] = screenToWorld(screenX, screenY);
     const clicked = findComponentAt(project.components, [worldX, worldY]);
+
     if (clicked) {
-      setDraggedComponent(clicked.id);
-      setDragOffset([worldX - clicked.pos[0], worldY - clicked.pos[1]]);
-      selectComponent(clicked.id);
+      // Check if clicking on an already selected component in a multi-selection
+      if (selectedComponents.length > 1 && selectedComponents.includes(clicked.id)) {
+        // Start group drag
+        setIsDraggingGroup(true);
+        setLastDragPos([worldX, worldY]);
+      } else {
+        // Single component drag
+        setDraggedComponent(clicked.id);
+        setDragOffset([worldX - clicked.pos[0], worldY - clicked.pos[1]]);
+        if (!e.shiftKey) {
+          selectComponent(clicked.id);
+        }
+      }
+    } else {
+      // Start selection box on empty space
+      setIsSelectingBox(true);
+      setSelectBoxStart([worldX, worldY]);
+      setSelectBoxEnd([worldX, worldY]);
     }
   };
 
@@ -396,9 +469,34 @@ const CanvasView = () => {
       return;
     }
 
+    const [worldX, worldY] = screenToWorld(screenX, screenY);
+
+    // Handle selection box
+    if (isSelectingBox && selectBoxStart) {
+      setSelectBoxEnd([worldX, worldY]);
+      return;
+    }
+
+    // Handle group dragging
+    if (isDraggingGroup && lastDragPos && selectedComponents.length > 0) {
+      let deltaX = worldX - lastDragPos[0];
+      let deltaY = worldY - lastDragPos[1];
+
+      if (snapEnabled) {
+        deltaX = snapToGrid(deltaX);
+        deltaY = snapToGrid(deltaY);
+      }
+
+      if (deltaX !== 0 || deltaY !== 0) {
+        updateComponentsPosition(selectedComponents, [deltaX, deltaY]);
+        setLastDragPos([lastDragPos[0] + deltaX, lastDragPos[1] + deltaY]);
+      }
+      return;
+    }
+
+    // Handle single component drag
     if (!draggedComponent) return;
 
-    const [worldX, worldY] = screenToWorld(screenX, screenY);
     let x = worldX - dragOffset[0];
     let y = worldY - dragOffset[1];
 
@@ -411,8 +509,39 @@ const CanvasView = () => {
   };
 
   const handleMouseUp = () => {
+    // Finish selection box - select components inside
+    if (isSelectingBox && selectBoxStart && selectBoxEnd) {
+      const minX = Math.min(selectBoxStart[0], selectBoxEnd[0]);
+      const maxX = Math.max(selectBoxStart[0], selectBoxEnd[0]);
+      const minY = Math.min(selectBoxStart[1], selectBoxEnd[1]);
+      const maxY = Math.max(selectBoxStart[1], selectBoxEnd[1]);
+
+      // Only process if box is large enough (avoid accidental tiny boxes)
+      const boxWidth = maxX - minX;
+      const boxHeight = maxY - minY;
+
+      if (boxWidth > 2 || boxHeight > 2) {
+        // Find components inside the box
+        const insideComponents = project.components.filter((comp) => {
+          const [cx, cy] = comp.pos;
+          return cx >= minX && cx <= maxX && cy >= minY && cy <= maxY;
+        });
+
+        if (insideComponents.length > 0) {
+          selectComponents(insideComponents.map((c) => c.id));
+        }
+        // Mark that we just finished selecting to prevent click from clearing
+        setWasSelectingBox(true);
+      }
+    }
+
     setDraggedComponent(null);
     setIsPanning(false);
+    setIsSelectingBox(false);
+    setSelectBoxStart(null);
+    setSelectBoxEnd(null);
+    setIsDraggingGroup(false);
+    setLastDragPos(null);
   };
 
   // Use native event listener for wheel to avoid passive event warning
@@ -572,7 +701,8 @@ const CanvasView = () => {
     if (isDrawingRoute) return 'crosshair';
     if (isPlacingVia) return 'cell';
     if (isAutoRouting) return 'crosshair';
-    if (draggedComponent) return 'grabbing';
+    if (draggedComponent || isDraggingGroup) return 'grabbing';
+    if (isSelectingBox) return 'crosshair';
     return 'default';
   };
 
@@ -639,11 +769,15 @@ const CanvasView = () => {
             Reset
           </button>
         </div>
-        {selectedComponent && (
-          <div style={{ marginTop: '4px', color: '#666' }}>R: Rotate | Del: Delete</div>
+        {(selectedComponent || selectedComponents.length > 0) && (
+          <div style={{ marginTop: '4px', color: '#666' }}>
+            {selectedComponents.length > 1
+              ? `${selectedComponents.length} selected | Del: Delete`
+              : 'R: Rotate | Del: Delete'}
+          </div>
         )}
         <div style={{ marginTop: '4px', color: '#888', fontSize: '10px' }}>
-          Scroll: Zoom | Right-drag: Pan
+          Scroll: Zoom | Right-drag: Pan | Drag: Select box
         </div>
       </div>
       <canvas
@@ -846,7 +980,7 @@ const drawComponent = (
 
   // Draw pads
   if (footprint?.pads) {
-    footprint.pads.forEach((pad, padIdx) => {
+    footprint.pads.forEach((pad) => {
       const radius = (pad.dia ?? pad.width ?? 2) / 2;
       ctx.fillStyle = '#b87333';
       ctx.beginPath();
@@ -859,93 +993,124 @@ const drawComponent = (
 
     // Draw pin names with leader lines (after all pads so lines don't obscure)
     if (showPinout) {
-      // Collect pin label info
+      // Config
+      const labelHeight = 6;
+      const rowSpacing = 7; // Vertical spacing between label rows
+
+      ctx.font = '5px sans-serif';
+
+      // Calculate component bounds
+      const allPadPositions = footprint.pads.map((p) => p.pos);
+      const minX = Math.min(...allPadPositions.map((p) => p[0]));
+      const maxX = Math.max(...allPadPositions.map((p) => p[0]));
+      const minY = Math.min(...allPadPositions.map((p) => p[1]));
+      const maxY = Math.max(...allPadPositions.map((p) => p[1]));
+      const centerX = (minX + maxX) / 2;
+
+      // Detect components that need stacked layout (MCUs, headers, ICs with many pins)
+      const isMCU = type.startsWith('mcu_');
+      const isHeader = type.startsWith('header_');
+      const isIC = type.startsWith('ic_') || type.startsWith('mux_') || type.startsWith('shift_');
+      const pinCount = footprint.pads.length;
+      const useStackedLayout =
+        (isMCU && pinCount >= 12) || (isHeader && pinCount >= 4) || (isIC && pinCount >= 8);
+
+      // Collect labels with positions
       type PinLabel = {
         padPos: Vec2;
         name: string;
         radius: number;
+        labelX: number;
+        labelY: number;
+        textAlign: CanvasTextAlign;
       };
-      const labels: PinLabel[] = [];
 
-      footprint.pads.forEach((pad, padIdx) => {
-        const pinInfo = getPinInfo(type, padIdx);
-        if (pinInfo && pinInfo.name) {
-          const radius = (pad.dia ?? pad.width ?? 2) / 2;
-          labels.push({
-            padPos: pad.pos,
-            name: pinInfo.name,
-            radius,
+      const positioned: PinLabel[] = [];
+
+      if (useStackedLayout) {
+        // MCU stacked layout: separate left and right side pins
+        const leftPins: { pad: (typeof footprint.pads)[0]; idx: number; pinName: string }[] = [];
+        const rightPins: { pad: (typeof footprint.pads)[0]; idx: number; pinName: string }[] = [];
+
+        footprint.pads.forEach((pad, idx) => {
+          const pinInfo = getPinInfo(type, idx);
+          if (!pinInfo || !pinInfo.name) return;
+          if (pad.pos[0] < centerX) {
+            leftPins.push({ pad, idx, pinName: pinInfo.name });
+          } else {
+            rightPins.push({ pad, idx, pinName: pinInfo.name });
+          }
+        });
+
+        // Sort by Y position (top to bottom)
+        leftPins.sort((a, b) => a.pad.pos[1] - b.pad.pos[1]);
+        rightPins.sort((a, b) => a.pad.pos[1] - b.pad.pos[1]);
+
+        // Place left side labels in stacked rows to the left of component
+        const leftLabelX = minX - 8; // Fixed X position for all left labels
+        leftPins.forEach((pin, i) => {
+          const labelY = minY + i * rowSpacing;
+          positioned.push({
+            padPos: pin.pad.pos,
+            name: pin.pinName,
+            radius: (pin.pad.dia ?? pin.pad.width ?? 2) / 2,
+            labelX: leftLabelX,
+            labelY,
+            textAlign: 'right',
           });
-        }
-      });
+        });
 
-      if (labels.length > 0) {
-        // Calculate component bounds for label placement
-        const padXs = labels.map((l) => l.padPos[0]);
-        const padYs = labels.map((l) => l.padPos[1]);
-        const centerX = (Math.min(...padXs) + Math.max(...padXs)) / 2;
-        const centerY = (Math.min(...padYs) + Math.max(...padYs)) / 2;
-
-        // Config for label layout
-        const labelHeight = 7;
+        // Place right side labels in stacked rows to the right of component
+        const rightLabelX = maxX + 8; // Fixed X position for all right labels
+        rightPins.forEach((pin, i) => {
+          const labelY = minY + i * rowSpacing;
+          positioned.push({
+            padPos: pin.pad.pos,
+            name: pin.pinName,
+            radius: (pin.pad.dia ?? pin.pad.width ?? 2) / 2,
+            labelX: rightLabelX,
+            labelY,
+            textAlign: 'left',
+          });
+        });
+      } else {
+        // Standard layout for non-MCU components
+        const labelOffset = 6;
         const labelPadding = 2;
-        const leaderLength = 8;
-        const leaderExtension = 4; // Extra horizontal extension for leader
+        const centerY = (minY + maxY) / 2;
 
-        ctx.font = '5px sans-serif';
+        footprint.pads.forEach((pad, padIdx) => {
+          const pinInfo = getPinInfo(type, padIdx);
+          if (!pinInfo || !pinInfo.name) return;
 
-        // Calculate label positions avoiding overlap
-        type PositionedLabel = PinLabel & {
-          labelX: number;
-          labelY: number;
-          leaderEndX: number;
-          leaderEndY: number;
-          textAlign: CanvasTextAlign;
-        };
+          const radius = (pad.dia ?? pad.width ?? 2) / 2;
+          const dx = pad.pos[0] - centerX;
+          const dy = pad.pos[1] - centerY;
 
-        const positioned: PositionedLabel[] = [];
-
-        labels.forEach((label, idx) => {
-          // Determine which side of component this pad is on
-          const dx = label.padPos[0] - centerX;
-          const dy = label.padPos[1] - centerY;
-
-          // Choose primary direction based on position relative to center
           let labelX: number;
           let labelY: number;
-          let leaderEndX: number;
-          let leaderEndY: number;
           let textAlign: CanvasTextAlign;
 
-          // Place labels on outside edges with staggered offsets
           if (Math.abs(dx) > Math.abs(dy)) {
-            // Pad is more horizontal - place label left or right
+            // Horizontal placement (left or right)
             const side = dx >= 0 ? 1 : -1;
-            leaderEndX = label.padPos[0] + side * (label.radius + leaderLength);
-            leaderEndY = label.padPos[1];
-            labelX = leaderEndX + side * leaderExtension;
-            labelY = leaderEndY;
+            labelX = pad.pos[0] + side * (radius + labelOffset);
+            labelY = pad.pos[1];
             textAlign = side > 0 ? 'left' : 'right';
           } else {
-            // Pad is more vertical - place label above or below
+            // Vertical placement (above or below)
             const side = dy >= 0 ? 1 : -1;
-            leaderEndX = label.padPos[0];
-            leaderEndY = label.padPos[1] + side * (label.radius + leaderLength);
-            labelX = leaderEndX;
-            labelY = leaderEndY + side * 2;
+            labelX = pad.pos[0];
+            labelY = pad.pos[1] + side * (radius + labelOffset);
             textAlign = 'center';
           }
 
-          // Check for overlaps with existing labels and adjust
-          const textWidth = ctx.measureText(label.name).width;
-          let attempts = 0;
-          const maxAttempts = 5;
-
-          while (attempts < maxAttempts) {
+          // Check for overlaps and shift
+          const textWidth = ctx.measureText(pinInfo.name).width;
+          for (let attempts = 0; attempts < 5; attempts++) {
             let hasOverlap = false;
             for (const existing of positioned) {
               const existingWidth = ctx.measureText(existing.name).width;
-              // Calculate bounding boxes
               const newLeft =
                 textAlign === 'left'
                   ? labelX
@@ -966,7 +1131,6 @@ const drawComponent = (
               const existTop = existing.labelY - labelHeight / 2;
               const existBottom = existing.labelY + labelHeight / 2;
 
-              // Check overlap with padding
               if (
                 newLeft < existRight + labelPadding &&
                 newRight > existLeft - labelPadding &&
@@ -974,78 +1138,70 @@ const drawComponent = (
                 newBottom > existTop - labelPadding
               ) {
                 hasOverlap = true;
-                // Shift based on orientation
-                if (textAlign === 'center') {
-                  // Vertical labels - shift down
-                  labelY += labelHeight + labelPadding;
-                  leaderEndY += labelHeight + labelPadding;
-                } else {
-                  // Horizontal labels - shift down
-                  labelY += labelHeight + labelPadding;
-                  leaderEndY += (labelHeight + labelPadding) * 0.5;
-                }
+                labelY += labelHeight + labelPadding;
                 break;
               }
             }
             if (!hasOverlap) break;
-            attempts++;
           }
 
           positioned.push({
-            ...label,
+            padPos: pad.pos,
+            name: pinInfo.name,
+            radius,
             labelX,
             labelY,
-            leaderEndX,
-            leaderEndY,
             textAlign,
           });
         });
-
-        // Draw all labels with leader lines
-        positioned.forEach((label) => {
-          ctx.save();
-          // Counter-rotate to keep text horizontal
-          ctx.translate(label.padPos[0], label.padPos[1]);
-          ctx.rotate((-rotation * Math.PI) / 180);
-
-          // Calculate relative positions after rotation
-          const relLeaderEndX = label.leaderEndX - label.padPos[0];
-          const relLeaderEndY = label.leaderEndY - label.padPos[1];
-          const relLabelX = label.labelX - label.padPos[0];
-          const relLabelY = label.labelY - label.padPos[1];
-
-          // Draw leader line
-          ctx.strokeStyle = theme === 'dark' ? 'rgba(150,200,255,0.5)' : 'rgba(0,50,100,0.4)';
-          ctx.lineWidth = 0.5;
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo(relLeaderEndX, relLeaderEndY);
-          ctx.lineTo(relLabelX, relLabelY);
-          ctx.stroke();
-
-          // Draw label background
-          const textWidth = ctx.measureText(label.name).width;
-          let bgX: number;
-          if (label.textAlign === 'left') {
-            bgX = relLabelX - 1;
-          } else if (label.textAlign === 'right') {
-            bgX = relLabelX - textWidth - 1;
-          } else {
-            bgX = relLabelX - textWidth / 2 - 1;
-          }
-          ctx.fillStyle = theme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.85)';
-          ctx.fillRect(bgX, relLabelY - 3.5, textWidth + 2, 7);
-
-          // Draw pin name text
-          ctx.font = '5px sans-serif';
-          ctx.textAlign = label.textAlign;
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = theme === 'dark' ? '#adf' : '#036';
-          ctx.fillText(label.name, relLabelX, relLabelY);
-
-          ctx.restore();
-        });
       }
+
+      // Draw labels with leader lines
+      positioned.forEach((label) => {
+        ctx.save();
+        ctx.translate(label.padPos[0], label.padPos[1]);
+        ctx.rotate((-rotation * Math.PI) / 180);
+
+        // Relative label position
+        const relLabelX = label.labelX - label.padPos[0];
+        const relLabelY = label.labelY - label.padPos[1];
+
+        // Draw leader line from pad edge to label
+        ctx.strokeStyle = theme === 'dark' ? 'rgba(150,200,255,0.6)' : 'rgba(0,50,100,0.5)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(relLabelX, relLabelY);
+        ctx.stroke();
+
+        // Draw small dot at pad
+        ctx.fillStyle = theme === 'dark' ? 'rgba(150,200,255,0.8)' : 'rgba(0,50,100,0.6)';
+        ctx.beginPath();
+        ctx.arc(0, 0, 0.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw label background
+        const textWidth = ctx.measureText(label.name).width;
+        let bgX: number;
+        if (label.textAlign === 'left') {
+          bgX = relLabelX - 1;
+        } else if (label.textAlign === 'right') {
+          bgX = relLabelX - textWidth - 1;
+        } else {
+          bgX = relLabelX - textWidth / 2 - 1;
+        }
+        ctx.fillStyle = theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)';
+        ctx.fillRect(bgX, relLabelY - 3.5, textWidth + 2, 7);
+
+        // Draw pin name
+        ctx.font = '5px sans-serif';
+        ctx.textAlign = label.textAlign;
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = theme === 'dark' ? '#adf' : '#036';
+        ctx.fillText(label.name, relLabelX, relLabelY);
+
+        ctx.restore();
+      });
     }
   }
 

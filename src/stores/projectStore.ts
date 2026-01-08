@@ -21,6 +21,7 @@ const MAX_HISTORY = 50;
 type ProjectState = {
   project: Project;
   selectedComponent: string | null;
+  selectedComponents: string[]; // Multi-select support
   selectedRoute: number | null;
   violations: DRCViolation[];
   isDrawingRoute: boolean;
@@ -45,9 +46,14 @@ type ProjectState = {
   // Component actions
   addComponent: (component: Component) => void;
   removeComponent: (id: string) => void;
+  removeComponents: (ids: string[]) => void;
   updateComponentPosition: (id: string, pos: Vec2) => void;
+  updateComponentsPosition: (ids: string[], delta: Vec2) => void;
   updateComponentRotation: (id: string, rotation: number) => void;
   selectComponent: (id: string | null) => void;
+  selectComponents: (ids: string[]) => void;
+  addToSelection: (id: string) => void;
+  clearSelection: () => void;
 
   // Routing actions
   startRoute: () => void;
@@ -137,6 +143,7 @@ const createDefaultProject = (): Project => ({
 export const useProjectStore = create<ProjectState>((set, get) => ({
   project: createDefaultProject(),
   selectedComponent: null,
+  selectedComponents: [],
   selectedRoute: null,
   violations: [],
   isDrawingRoute: false,
@@ -196,6 +203,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         components: state.project.components.filter((c) => c.id !== id),
       },
       selectedComponent: state.selectedComponent === id ? null : state.selectedComponent,
+      selectedComponents: state.selectedComponents.filter((cid) => cid !== id),
+    }));
+  },
+
+  removeComponents: (ids) => {
+    if (ids.length === 0) return;
+    get().pushHistory();
+    const idSet = new Set(ids);
+    set((state) => ({
+      project: {
+        ...state.project,
+        components: state.project.components.filter((c) => !idSet.has(c.id)),
+      },
+      selectedComponent:
+        state.selectedComponent && idSet.has(state.selectedComponent)
+          ? null
+          : state.selectedComponent,
+      selectedComponents: [],
     }));
   },
 
@@ -207,6 +232,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       },
     })),
 
+  updateComponentsPosition: (ids, delta) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    set((state) => ({
+      project: {
+        ...state.project,
+        components: state.project.components.map((c) =>
+          idSet.has(c.id) ? { ...c, pos: [c.pos[0] + delta[0], c.pos[1] + delta[1]] as Vec2 } : c
+        ),
+      },
+    }));
+  },
+
   updateComponentRotation: (id, rotation) =>
     set((state) => ({
       project: {
@@ -215,7 +253,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       },
     })),
 
-  selectComponent: (id) => set({ selectedComponent: id }),
+  selectComponent: (id) => set({ selectedComponent: id, selectedComponents: id ? [id] : [] }),
+
+  selectComponents: (ids) =>
+    set({ selectedComponents: ids, selectedComponent: ids.length === 1 ? ids[0] : null }),
+
+  addToSelection: (id) =>
+    set((state) => ({
+      selectedComponents: state.selectedComponents.includes(id)
+        ? state.selectedComponents
+        : [...state.selectedComponents, id],
+      selectedComponent: null, // Clear single selection when multi-selecting
+    })),
+
+  clearSelection: () => set({ selectedComponent: null, selectedComponents: [] }),
 
   startRoute: () => {
     set({
