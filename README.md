@@ -22,6 +22,7 @@
 ### Component Library
 - 120+ footprints across 30 categories: passives, semiconductors, headers, switches, ICs, MCUs (Arduino, ESP32, Raspberry Pi Pico, Teensy, Daisy Seed), displays, audio, sensors, motors, Bluetooth modules (HC-05, HC-06, HM-10, nRF52840), SD card modules, battery holders, joysticks, and more
 - Drag‑and‑drop placement with grid snapping, rotation, and search
+- Multi‑select components via selection box or Shift‑click; move/delete groups
 - Auto‑generated designators (R1, C1, U1, etc.) and annotations
 - Beginner-friendly tooltips throughout the UI
 
