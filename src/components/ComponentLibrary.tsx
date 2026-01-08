@@ -44,6 +44,14 @@ const CATEGORY_MAP: Record<string, string[]> = {
     'header_2x5',
     'header_2x8',
   ],
+  'MCU Sockets': [
+    'socket_arduino_nano',
+    'socket_pro_micro',
+    'socket_esp32_devkit',
+    'socket_raspberry_pico',
+    'socket_daisy_seed',
+    'socket_teensy41',
+  ],
   ICs: ['ic_dip8', 'ic_dip14', 'ic_dip16'],
   Joysticks: ['joystick_psp', 'joystick_thumb'],
   'LED/Matrix': [

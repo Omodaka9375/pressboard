@@ -114,38 +114,38 @@ const Resistor3D = ({
   const rotRad = (rotation * Math.PI) / 180;
   return (
     <group position={position} rotation={[0, 0, rotRad]}>
-      {/* Body - horizontal along Y axis */}
-      <mesh position={[0, 0, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+      {/* Body - horizontal along X axis */}
+      <mesh position={[0, 0, 1.5]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[1.2, 1.2, 7, 16]} />
         <meshStandardMaterial color="#c4a484" roughness={0.6} />
       </mesh>
       {/* End caps - tapered ends */}
-      <mesh position={[0, -3.8, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[-3.8, 0, 1.5]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.6, 1.2, 0.6, 12]} />
         <meshStandardMaterial color="#c4a484" roughness={0.6} />
       </mesh>
-      <mesh position={[0, 3.8, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[3.8, 0, 1.5]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[1.2, 0.6, 0.6, 12]} />
         <meshStandardMaterial color="#c4a484" roughness={0.6} />
       </mesh>
       {/* Color bands - positioned along the body */}
-      {[-2.5, -1.5, -0.5, 1.5].map((yOffset, i) => (
-        <mesh key={i} position={[0, yOffset, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+      {[-2.5, -1.5, -0.5, 1.5].map((xOffset, i) => (
+        <mesh key={i} position={[xOffset, 0, 1.5]} rotation={[0, Math.PI / 2, 0]}>
           <torusGeometry args={[1.21, 0.15, 8, 16]} />
           <meshStandardMaterial color={['#a52a2a', '#000000', '#ff8c00', '#ffd700'][i]} />
         </mesh>
       ))}
       {/* Tolerance band (gold) */}
-      <mesh position={[0, 2.8, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[2.8, 0, 1.5]} rotation={[0, Math.PI / 2, 0]}>
         <torusGeometry args={[1.21, 0.15, 8, 16]} />
         <meshStandardMaterial color="#d4af37" metalness={0.6} />
       </mesh>
       {/* Leads - extending from both ends */}
-      <mesh position={[0, -5.5, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[-5.5, 0, 1.5]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.3, 0.3, 4, 8]} />
         <meshStandardMaterial color="#888888" metalness={0.8} roughness={0.2} />
       </mesh>
-      <mesh position={[0, 5.5, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[5.5, 0, 1.5]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.3, 0.3, 4, 8]} />
         <meshStandardMaterial color="#888888" metalness={0.8} roughness={0.2} />
       </mesh>
@@ -478,12 +478,12 @@ const Button3D = ({
         <meshStandardMaterial color="#1a1a1a" />
       </mesh>
       {/* Button cap - upright cylinder */}
-      <mesh position={[size / 2, size / 2, 4]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[size / 2, size / 2, 4]}>
         <cylinderGeometry args={[size / 3, size / 3, 2, 16]} />
         <meshStandardMaterial color={isArcade ? '#dd3333' : '#444444'} roughness={0.5} />
       </mesh>
       {/* Cap highlight ring */}
-      <mesh position={[size / 2, size / 2, 5.1]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[size / 2, size / 2, 5.1]}>
         <torusGeometry args={[size / 3.5, 0.1, 8, 16]} />
         <meshStandardMaterial color="#555555" />
       </mesh>
@@ -774,6 +774,68 @@ const HeaderPin3D = ({
           </mesh>
         ))
       )}
+    </group>
+  );
+};
+
+/** Create socket header (female) 3D model for MCU mounting. */
+const SocketHeader3D = ({
+  position,
+  rotation,
+  pinsPerSide,
+  rowSpacing,
+  color = '#1a1a1a',
+}: {
+  position: [number, number, number];
+  rotation: number;
+  pinsPerSide: number;
+  rowSpacing: number;
+  color?: string;
+}) => {
+  const rotRad = (rotation * Math.PI) / 180;
+  const pitch = 2.54;
+  const length = pinsPerSide * pitch;
+  const housingHeight = 8.5;
+
+  return (
+    <group position={position} rotation={[0, 0, rotRad]}>
+      {/* Left row housing */}
+      <mesh position={[0, (length - pitch) / 2, housingHeight / 2]}>
+        <boxGeometry args={[2.54, length, housingHeight]} />
+        <meshStandardMaterial color={color} roughness={0.8} />
+      </mesh>
+      {/* Right row housing */}
+      <mesh position={[rowSpacing, (length - pitch) / 2, housingHeight / 2]}>
+        <boxGeometry args={[2.54, length, housingHeight]} />
+        <meshStandardMaterial color={color} roughness={0.8} />
+      </mesh>
+      {/* Socket holes (left side) */}
+      {Array.from({ length: pinsPerSide }).map((_, i) => (
+        <mesh key={`left-${i}`} position={[0, i * pitch, housingHeight - 1]}>
+          <boxGeometry args={[0.8, 0.8, 2]} />
+          <meshStandardMaterial color="#333333" />
+        </mesh>
+      ))}
+      {/* Socket holes (right side) */}
+      {Array.from({ length: pinsPerSide }).map((_, i) => (
+        <mesh key={`right-${i}`} position={[rowSpacing, i * pitch, housingHeight - 1]}>
+          <boxGeometry args={[0.8, 0.8, 2]} />
+          <meshStandardMaterial color="#333333" />
+        </mesh>
+      ))}
+      {/* Contact pins extending below (through-hole) */}
+      {Array.from({ length: pinsPerSide }).map((_, i) => (
+        <mesh key={`pin-left-${i}`} position={[0, i * pitch, -1.5]}>
+          <boxGeometry args={[0.5, 0.5, 3]} />
+          <meshStandardMaterial color="#d4af37" metalness={0.8} roughness={0.2} />
+        </mesh>
+      ))}
+      {Array.from({ length: pinsPerSide }).map((_, i) => (
+        <mesh key={`pin-right-${i}`} position={[rowSpacing, i * pitch, -1.5]}>
+          <boxGeometry args={[0.5, 0.5, 3]} />
+          <meshStandardMaterial color="#d4af37" metalness={0.8} roughness={0.2} />
+        </mesh>
+      ))}
     </group>
   );
 };
@@ -1138,6 +1200,29 @@ const Component3D = ({ component, boardThickness }: Component3DProps) => {
       const cols = parseInt(match[1]);
       const rows = parseInt(match[2]);
       return <HeaderPin3D position={pos} rotation={component.rotation} rows={rows} cols={cols} />;
+    }
+  }
+
+  // MCU Sockets (female headers for mounting dev boards)
+  if (type.startsWith('socket_')) {
+    const socketSpecs: Record<string, { pinsPerSide: number; rowSpacing: number }> = {
+      socket_arduino_nano: { pinsPerSide: 15, rowSpacing: 15.24 },
+      socket_pro_micro: { pinsPerSide: 12, rowSpacing: 15.24 },
+      socket_esp32_devkit: { pinsPerSide: 15, rowSpacing: 25.4 },
+      socket_raspberry_pico: { pinsPerSide: 20, rowSpacing: 17.78 },
+      socket_daisy_seed: { pinsPerSide: 20, rowSpacing: 15.24 },
+      socket_teensy41: { pinsPerSide: 24, rowSpacing: 14 },
+    };
+    const spec = socketSpecs[type];
+    if (spec) {
+      return (
+        <SocketHeader3D
+          position={pos}
+          rotation={component.rotation}
+          pinsPerSide={spec.pinsPerSide}
+          rowSpacing={spec.rowSpacing}
+        />
+      );
     }
   }
 

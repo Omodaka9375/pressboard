@@ -1007,13 +1007,17 @@ const drawComponent = (
       const maxY = Math.max(...allPadPositions.map((p) => p[1]));
       const centerX = (minX + maxX) / 2;
 
-      // Detect components that need stacked layout (MCUs, headers, ICs with many pins)
+      // Detect components that need stacked layout (MCUs, sockets, headers, ICs with many pins)
       const isMCU = type.startsWith('mcu_');
+      const isSocket = type.startsWith('socket_');
       const isHeader = type.startsWith('header_');
       const isIC = type.startsWith('ic_') || type.startsWith('mux_') || type.startsWith('shift_');
       const pinCount = footprint.pads.length;
       const useStackedLayout =
-        (isMCU && pinCount >= 12) || (isHeader && pinCount >= 4) || (isIC && pinCount >= 8);
+        (isMCU && pinCount >= 12) ||
+        (isSocket && pinCount >= 12) ||
+        (isHeader && pinCount >= 4) ||
+        (isIC && pinCount >= 8);
 
       // Collect labels with positions
       type PinLabel = {
@@ -1241,6 +1245,18 @@ const drawComponent = (
       } else if (type.startsWith('mcu_')) {
         // For MCUs, extract the board name
         label = name.split(' ')[0] || type.replace('mcu_', '').toUpperCase();
+      } else if (type.startsWith('socket_')) {
+        // For sockets, show the target board name (e.g., "Nano Socket")
+        const boardName = type.replace('socket_', '').replace(/_/g, ' ');
+        const shortNames: Record<string, string> = {
+          'arduino nano': 'Nano Socket',
+          'pro micro': 'Pro Micro Socket',
+          'esp32 devkit': 'ESP32 Socket',
+          'raspberry pico': 'Pico Socket',
+          'daisy seed': 'Daisy Socket',
+          teensy41: 'Teensy Socket',
+        };
+        label = shortNames[boardName] || `${boardName} Socket`;
       } else if (type.startsWith('header_')) {
         // For headers, show the pin config
         const match = type.match(/header_(\d+x\d+)/);

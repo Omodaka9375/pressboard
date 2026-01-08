@@ -196,6 +196,140 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
     })),
   },
 
+  // MCU Socket Headers - use these to mount dev boards
+  // Outlines show housing strips on left and right sides
+  socket_arduino_nano: {
+    type: 'socket_arduino_nano',
+    name: 'Socket for Arduino Nano (15.24mm row)',
+    height: 8.5,
+    pads: Array.from({ length: 30 }, (_, i) => ({
+      pos: [i < 15 ? 0 : 15.24, (i % 15) * 2.54] as Vec2,
+      dia: 1.7,
+      width: 1.7,
+      height: 1.7,
+    })),
+    holes: Array.from({ length: 30 }, (_, i) => ({
+      pos: [i < 15 ? 0 : 15.24, (i % 15) * 2.54] as Vec2,
+      dia: 1.0,
+    })),
+    outline: [
+      [-1.27, -1.27],
+      [16.51, -1.27],
+      [16.51, 36.83],
+      [-1.27, 36.83],
+    ],
+  },
+
+  socket_esp32_devkit: {
+    type: 'socket_esp32_devkit',
+    name: 'Socket for ESP32 DevKit (25.4mm/1" row)',
+    height: 8.5,
+    pads: Array.from({ length: 30 }, (_, i) => ({
+      pos: [i < 15 ? 0 : 25.4, (i % 15) * 2.54] as Vec2,
+      dia: 1.7,
+      width: 1.7,
+      height: 1.7,
+    })),
+    holes: Array.from({ length: 30 }, (_, i) => ({
+      pos: [i < 15 ? 0 : 25.4, (i % 15) * 2.54] as Vec2,
+      dia: 1.0,
+    })),
+    outline: [
+      [-1.27, -1.27],
+      [26.67, -1.27],
+      [26.67, 36.83],
+      [-1.27, 36.83],
+    ],
+  },
+
+  socket_raspberry_pico: {
+    type: 'socket_raspberry_pico',
+    name: 'Socket for Raspberry Pi Pico (17.78mm row)',
+    height: 8.5,
+    pads: Array.from({ length: 40 }, (_, i) => ({
+      pos: [i < 20 ? 0 : 17.78, (i % 20) * 2.54] as Vec2,
+      dia: 1.7,
+      width: 1.7,
+      height: 1.7,
+    })),
+    holes: Array.from({ length: 40 }, (_, i) => ({
+      pos: [i < 20 ? 0 : 17.78, (i % 20) * 2.54] as Vec2,
+      dia: 1.0,
+    })),
+    outline: [
+      [-1.27, -1.27],
+      [19.05, -1.27],
+      [19.05, 49.53],
+      [-1.27, 49.53],
+    ],
+  },
+
+  socket_daisy_seed: {
+    type: 'socket_daisy_seed',
+    name: 'Socket for Daisy Seed (15.24mm row)',
+    height: 8.5,
+    pads: Array.from({ length: 40 }, (_, i) => ({
+      pos: [i < 20 ? 0 : 15.24, (i % 20) * 2.54] as Vec2,
+      dia: 1.7,
+      width: 1.7,
+      height: 1.7,
+    })),
+    holes: Array.from({ length: 40 }, (_, i) => ({
+      pos: [i < 20 ? 0 : 15.24, (i % 20) * 2.54] as Vec2,
+      dia: 1.0,
+    })),
+    outline: [
+      [-1.27, -1.27],
+      [16.51, -1.27],
+      [16.51, 49.53],
+      [-1.27, 49.53],
+    ],
+  },
+
+  socket_teensy41: {
+    type: 'socket_teensy41',
+    name: 'Socket for Teensy 4.1 (14mm row)',
+    height: 8.5,
+    pads: Array.from({ length: 48 }, (_, i) => ({
+      pos: [i < 24 ? 0 : 14, (i % 24) * 2.54] as Vec2,
+      dia: 1.7,
+      width: 1.7,
+      height: 1.7,
+    })),
+    holes: Array.from({ length: 48 }, (_, i) => ({
+      pos: [i < 24 ? 0 : 14, (i % 24) * 2.54] as Vec2,
+      dia: 1.0,
+    })),
+    outline: [
+      [-1.27, -1.27],
+      [15.27, -1.27],
+      [15.27, 59.69],
+      [-1.27, 59.69],
+    ],
+  },
+
+  socket_pro_micro: {
+    type: 'socket_pro_micro',
+    name: 'Socket for Pro Micro (15.24mm row)',
+    height: 8.5,
+    pads: Array.from({ length: 24 }, (_, i) => ({
+      pos: [i < 12 ? 0 : 15.24, (i % 12) * 2.54] as Vec2,
+      dia: 1.7,
+      width: 1.7,
+      height: 1.7,
+    })),
+    holes: Array.from({ length: 24 }, (_, i) => ({
+      pos: [i < 12 ? 0 : 15.24, (i % 12) * 2.54] as Vec2,
+      dia: 1.0,
+    })),
+    outline: [
+      [-1.27, -1.27],
+      [16.51, -1.27],
+      [16.51, 29.21],
+      [-1.27, 29.21],
+    ],
+  },
+
   switch_spst: {
     type: 'switch_spst',
     name: 'Switch SPST (Through-Hole)',
