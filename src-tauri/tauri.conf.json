@@ -44,8 +44,7 @@
         "name": "PressBoard Project",
         "description": "PressBoard PCB Design Project",
         "role": "Editor",
-        "mimeType": "application/x-pressboard",
-        "icon": "icons/icon.ico"
+        "mimeType": "application/x-pressboard"
       }
     ],
     "windows": {
