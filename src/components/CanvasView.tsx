@@ -1222,7 +1222,37 @@ const drawComponent = (
     ctx.fillStyle = theme === 'dark' ? '#fff' : '#000';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'center';
-    const label = footprint?.name?.split(' ')[0] || type;
+
+    // Create a short but descriptive label
+    let label = type;
+    if (footprint?.name) {
+      // Extract key info from name, e.g. "3.5mm TRS Jack (Stereo)" -> "TRS 3.5mm"
+      const name = footprint.name;
+      if (name.includes('TRRS')) {
+        label = 'TRRS 3.5mm';
+      } else if (name.includes('TRS') && name.includes('3.5')) {
+        label = 'TRS 3.5mm';
+      } else if (name.includes('TRS') && name.includes('6.35')) {
+        label = 'TRS 1/4"';
+      } else if (name.includes('MIDI') && name.includes('DIN')) {
+        label = 'MIDI DIN';
+      } else if (name.includes('MIDI') && name.includes('TRS')) {
+        label = 'MIDI TRS';
+      } else if (type.startsWith('mcu_')) {
+        // For MCUs, extract the board name
+        label = name.split(' ')[0] || type.replace('mcu_', '').toUpperCase();
+      } else if (type.startsWith('header_')) {
+        // For headers, show the pin config
+        const match = type.match(/header_(\d+x\d+)/);
+        label = match ? `Header ${match[1]}` : name.split(' ')[0];
+      } else {
+        // Default: take first 2 words or up to 15 chars
+        const words = name.split(' ');
+        label = words.slice(0, 2).join(' ');
+        if (label.length > 15) label = words[0];
+      }
+    }
+
     // Calculate top of component for label placement
     let labelY = pos[1];
     if (footprint?.outline && footprint.outline.length > 0) {
