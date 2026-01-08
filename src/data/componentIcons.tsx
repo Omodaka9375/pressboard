@@ -336,6 +336,22 @@ export const CategoryIcons: Record<string, ReactElement> = {
       <path d="M12 16 L12 20" />
     </svg>
   ),
+  'Audio DAC/ADC': (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <rect x="4" y="6" width="16" height="12" rx="1" />
+      <path d="M8 10 L8 14 L10 12 Z" fill="currentColor" />
+      <path d="M16 10 L16 14 L14 12 Z" fill="currentColor" />
+      <line x1="11" y1="12" x2="13" y2="12" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" />
+    </svg>
+  ),
   Sensors: (
     <svg
       viewBox="0 0 24 24"
@@ -748,6 +764,31 @@ export const getComponentIcon = (type: string): ReactElement => {
         <circle cx="12" cy="12" r="8" />
         <path d="M12 4 L12 12" stroke="#e53935" strokeWidth="3" />
         <path d="M12 12 L12 20" stroke="#1e88e5" strokeWidth="3" />
+      </svg>
+    );
+  }
+
+  // Audio DAC/ADC modules
+  if (
+    type.startsWith('audio_dac_') ||
+    type.startsWith('audio_adc_') ||
+    type.startsWith('audio_codec_')
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <rect x="4" y="6" width="16" height="12" rx="1" fill="#2d2d2d" />
+        <rect x="4" y="6" width="16" height="12" rx="1" />
+        <path d="M7 10 L7 14 L9 12 Z" fill="#4caf50" />
+        <path d="M17 10 L17 14 L15 12 Z" fill="#2196f3" />
+        <line x1="10" y1="12" x2="14" y2="12" strokeWidth="1" />
+        <circle cx="12" cy="12" r="1" fill="currentColor" />
       </svg>
     );
   }

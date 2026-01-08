@@ -118,6 +118,13 @@ const CATEGORY_MAP: Record<string, string[]> = {
     'rotary_switch_12pos',
   ],
   'Timing/ADC': ['crystal_hc49', 'oscillator_dip8', 'dac_mcp4725', 'adc_ads1115', 'eeprom_24c256'],
+  'Audio DAC/ADC': [
+    'audio_dac_pcm5102',
+    'audio_dac_max98357',
+    'audio_adc_pcm1808',
+    'audio_codec_es8388',
+    'audio_codec_wm8960',
+  ],
 };
 
 type ComponentItemProps = {

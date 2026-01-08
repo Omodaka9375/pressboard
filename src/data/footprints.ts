@@ -322,26 +322,28 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
     ],
   },
 
+  // USB Type-A: 2.0mm pin spacing (standard USB spec)
   connector_usb: {
     type: 'connector_usb',
     name: 'USB Type-A Connector',
+    height: 8,
     pads: [
-      { pos: [0, 0], dia: 1.5 },
-      { pos: [2.5, 0], dia: 1.5 },
-      { pos: [5, 0], dia: 1.5 },
-      { pos: [7.5, 0], dia: 1.5 },
+      { pos: [0, 0], dia: 1.5 }, // VBUS
+      { pos: [2.0, 0], dia: 1.5 }, // D- (2.0mm spacing)
+      { pos: [4.0, 0], dia: 1.5 }, // D+
+      { pos: [6.0, 0], dia: 1.5 }, // GND
     ],
     holes: [
-      { pos: [0, 0], dia: 1.0 },
-      { pos: [2.5, 0], dia: 1.0 },
-      { pos: [5, 0], dia: 1.0 },
-      { pos: [7.5, 0], dia: 1.0 },
+      { pos: [0, 0], dia: 0.9 },
+      { pos: [2.0, 0], dia: 0.9 },
+      { pos: [4.0, 0], dia: 0.9 },
+      { pos: [6.0, 0], dia: 0.9 },
     ],
     outline: [
       [-2, -2],
-      [9.5, -2],
-      [9.5, 6],
-      [-2, 6],
+      [8, -2],
+      [8, 14], // USB-A receptacle is ~14mm deep
+      [-2, 14],
     ],
   },
 
@@ -388,24 +390,27 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
     ],
   },
 
+  // ESP32 DevKit: 25.4mm (1") row spacing is most common, 30 pins
+  // Note: Variants exist with 22.86mm spacing - use mcu_esp32_devkit_narrow
   mcu_esp32_devkit: {
     type: 'mcu_esp32_devkit',
-    name: 'ESP32 DevKit (30-pin)',
+    name: 'ESP32 DevKit (30-pin, 1" row)',
+    height: 10,
     pads: Array.from({ length: 30 }, (_, i) => ({
-      pos: [i < 15 ? 0 : 22.86, (i % 15) * 2.54] as Vec2,
+      pos: [i < 15 ? 0 : 25.4, (i % 15) * 2.54] as Vec2, // 25.4mm = 1 inch row spacing
       dia: 1.7,
       width: 1.7,
       height: 1.7,
     })),
     holes: Array.from({ length: 30 }, (_, i) => ({
-      pos: [i < 15 ? 0 : 22.86, (i % 15) * 2.54] as Vec2,
+      pos: [i < 15 ? 0 : 25.4, (i % 15) * 2.54] as Vec2,
       dia: 1.0,
     })),
     outline: [
-      [-2, -3],
-      [24.86, -3],
-      [24.86, 38.1],
-      [-2, 38.1],
+      [-2, -5],
+      [27.4, -5],
+      [27.4, 53], // ~51mm board length
+      [-2, 53],
     ],
   },
 
@@ -521,24 +526,27 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
     ],
   },
 
+  // Teensy 4.1: 14mm (0.6") row spacing, 48 outer edge pins
+  // Board: 61mm x 18mm
   mcu_teensy41: {
     type: 'mcu_teensy41',
     name: 'Teensy 4.1 (48-pin)',
+    height: 8,
     pads: Array.from({ length: 48 }, (_, i) => ({
-      pos: [i < 24 ? 0 : 15.24, (i % 24) * 2.54] as Vec2,
+      pos: [i < 24 ? 0 : 14, (i % 24) * 2.54] as Vec2, // 14mm = 0.6" row spacing
       dia: 1.7,
       width: 1.7,
       height: 1.7,
     })),
     holes: Array.from({ length: 48 }, (_, i) => ({
-      pos: [i < 24 ? 0 : 15.24, (i % 24) * 2.54] as Vec2,
+      pos: [i < 24 ? 0 : 14, (i % 24) * 2.54] as Vec2,
       dia: 1.0,
     })),
     outline: [
       [-2, -3],
-      [17.24, -3],
-      [17.24, 62.5],
-      [-2, 62.5],
+      [16, -3],
+      [16, 61], // 61mm board length
+      [-2, 61],
     ],
   },
 
@@ -841,94 +849,105 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
   },
 
   // Audio Jacks
+  // PJ-301/302 style 3.5mm TRS: pins at 0, 5, 10mm (varies by manufacturer)
+  // Common Thonkiconn/PJ-301M style
   jack_trs_35mm: {
     type: 'jack_trs_35mm',
     name: '3.5mm TRS Jack (Stereo)',
+    height: 6,
     pads: [
-      { pos: [0, 0], dia: 2.0 },
-      { pos: [5, 0], dia: 2.0 },
-      { pos: [10, 0], dia: 2.0 },
+      { pos: [0, 0], dia: 1.8 }, // Tip
+      { pos: [5, 0], dia: 1.8 }, // Ring
+      { pos: [10, 0], dia: 1.8 }, // Sleeve (GND)
     ],
     holes: [
-      { pos: [0, 0], dia: 1.2 },
-      { pos: [5, 0], dia: 1.2 },
-      { pos: [10, 0], dia: 1.2 },
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [5, 0], dia: 1.0 },
+      { pos: [10, 0], dia: 1.0 },
     ],
     outline: [
-      [-2, -3],
-      [12, -3],
+      [-2, -5],
+      [12, -5],
       [12, 6],
       [-2, 6],
     ],
   },
 
+  // 3.5mm TRRS (4-pole): for headsets with mic
   jack_trrs_35mm: {
     type: 'jack_trrs_35mm',
     name: '3.5mm TRRS Jack (4-pole)',
+    height: 6,
     pads: [
-      { pos: [0, 0], dia: 2.0 },
-      { pos: [4, 0], dia: 2.0 },
-      { pos: [8, 0], dia: 2.0 },
-      { pos: [12, 0], dia: 2.0 },
+      { pos: [0, 0], dia: 1.8 }, // Tip (L audio)
+      { pos: [3, 0], dia: 1.8 }, // Ring 1 (R audio)
+      { pos: [6, 0], dia: 1.8 }, // Ring 2 (Mic/GND)
+      { pos: [9, 0], dia: 1.8 }, // Sleeve (GND/Mic)
     ],
     holes: [
-      { pos: [0, 0], dia: 1.2 },
-      { pos: [4, 0], dia: 1.2 },
-      { pos: [8, 0], dia: 1.2 },
-      { pos: [12, 0], dia: 1.2 },
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [3, 0], dia: 1.0 },
+      { pos: [6, 0], dia: 1.0 },
+      { pos: [9, 0], dia: 1.0 },
     ],
     outline: [
-      [-2, -3],
-      [14, -3],
-      [14, 6],
-      [-2, 6],
+      [-2, -5],
+      [11, -5],
+      [11, 7],
+      [-2, 7],
     ],
   },
 
+  // 6.35mm (1/4") TRS: Switchcraft-style, pins typically at 0, 9.5mm with switch pins
   jack_trs_635mm: {
     type: 'jack_trs_635mm',
     name: '6.35mm TRS Jack (1/4" Stereo)',
+    height: 12,
     pads: [
-      { pos: [0, 0], dia: 2.5 },
-      { pos: [6, 0], dia: 2.5 },
-      { pos: [12, 0], dia: 2.5 },
+      { pos: [0, 0], dia: 2.2 }, // Tip
+      { pos: [9.5, 0], dia: 2.2 }, // Ring (9.5mm from tip)
+      { pos: [19, 0], dia: 2.2 }, // Sleeve
     ],
     holes: [
-      { pos: [0, 0], dia: 1.5 },
-      { pos: [6, 0], dia: 1.5 },
-      { pos: [12, 0], dia: 1.5 },
+      { pos: [0, 0], dia: 1.3 },
+      { pos: [9.5, 0], dia: 1.3 },
+      { pos: [19, 0], dia: 1.3 },
     ],
     outline: [
-      [-3, -5],
-      [15, -5],
-      [15, 10],
-      [-3, 10],
+      [-4, -8],
+      [23, -8],
+      [23, 14], // 1/4" jacks are larger
+      [-4, 14],
     ],
   },
 
   // MIDI Connectors
+  // DIN-5 180°: pins on 7.62mm (0.3") diameter circle, 45° apart
+  // Pin numbering: 1,4 outer bottom, 2 center, 3,5 outer top (standard 180° arrangement)
   midi_din5: {
     type: 'midi_din5',
     name: 'MIDI DIN-5 Connector',
+    height: 15,
     pads: [
-      { pos: [0, 0], dia: 1.7 },
-      { pos: [2.54, 2.54], dia: 1.7 },
-      { pos: [5.08, 0], dia: 1.7 },
-      { pos: [0, 5.08], dia: 1.7 },
-      { pos: [5.08, 5.08], dia: 1.7 },
+      // Pin positions on 7.62mm diameter circle, centered at (3.81, 3.81)
+      { pos: [0.5, 1.2], dia: 1.7 }, // Pin 1 (bottom left)
+      { pos: [3.81, 0], dia: 1.7 }, // Pin 2 (bottom center)
+      { pos: [7.12, 1.2], dia: 1.7 }, // Pin 3 (bottom right)
+      { pos: [1.5, 5.5], dia: 1.7 }, // Pin 4 (top left)
+      { pos: [6.12, 5.5], dia: 1.7 }, // Pin 5 (top right)
     ],
     holes: [
-      { pos: [0, 0], dia: 1.0 },
-      { pos: [2.54, 2.54], dia: 1.0 },
-      { pos: [5.08, 0], dia: 1.0 },
-      { pos: [0, 5.08], dia: 1.0 },
-      { pos: [5.08, 5.08], dia: 1.0 },
+      { pos: [0.5, 1.2], dia: 1.3 },
+      { pos: [3.81, 0], dia: 1.3 },
+      { pos: [7.12, 1.2], dia: 1.3 },
+      { pos: [1.5, 5.5], dia: 1.3 },
+      { pos: [6.12, 5.5], dia: 1.3 },
     ],
     outline: [
-      [-3, -3],
-      [8, -3],
-      [8, 8],
-      [-3, 8],
+      [-2, -3],
+      [9.62, -3],
+      [9.62, 18], // DIN connector body depth
+      [-2, 18],
     ],
   },
 
@@ -954,14 +973,17 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
   },
 
   // Buttons
+  // 6x6mm tactile: 6.5mm x 4.5mm pin spacing (common variant), 6mm body
   button_6mm: {
     type: 'button_6mm',
     name: 'Tactile Button 6x6mm',
+    height: 4.5,
     pads: [
-      { pos: [0, 0], dia: 1.5 },
-      { pos: [6.5, 0], dia: 1.5 },
-      { pos: [0, 4.5], dia: 1.5 },
-      { pos: [6.5, 4.5], dia: 1.5 },
+      // Pins are internally connected in pairs: (0,2) and (1,3)
+      { pos: [0, 0], dia: 1.5 }, // A1
+      { pos: [6.5, 0], dia: 1.5 }, // B1
+      { pos: [0, 4.5], dia: 1.5 }, // A2 (connected to A1)
+      { pos: [6.5, 4.5], dia: 1.5 }, // B2 (connected to B1)
     ],
     holes: [
       { pos: [0, 0], dia: 1.0 },
@@ -970,21 +992,23 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
       { pos: [6.5, 4.5], dia: 1.0 },
     ],
     outline: [
-      [-1, -1],
-      [7.5, -1],
-      [7.5, 5.5],
-      [-1, 5.5],
+      [0.25, -0.75],
+      [6.25, -0.75],
+      [6.25, 5.25],
+      [0.25, 5.25],
     ],
   },
 
+  // 12x12mm tactile: 6.5mm x 8.5mm pin spacing, 12mm body
   button_12mm: {
     type: 'button_12mm',
     name: 'Tactile Button 12x12mm',
+    height: 7,
     pads: [
-      { pos: [0, 0], dia: 1.5 },
-      { pos: [6.5, 0], dia: 1.5 },
-      { pos: [0, 8.5], dia: 1.5 },
-      { pos: [6.5, 8.5], dia: 1.5 },
+      { pos: [0, 0], dia: 1.5 }, // A1
+      { pos: [6.5, 0], dia: 1.5 }, // B1
+      { pos: [0, 8.5], dia: 1.5 }, // A2
+      { pos: [6.5, 8.5], dia: 1.5 }, // B2
     ],
     holes: [
       { pos: [0, 0], dia: 1.0 },
@@ -993,10 +1017,10 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
       { pos: [6.5, 8.5], dia: 1.0 },
     ],
     outline: [
-      [-3, -2],
-      [9.5, -2],
-      [9.5, 10.5],
-      [-3, 10.5],
+      [-2.75, -1.75],
+      [9.25, -1.75],
+      [9.25, 10.25],
+      [-2.75, 10.25],
     ],
   },
 
@@ -1020,30 +1044,34 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
   },
 
   // Potentiometers
+  // Alpha 9mm: 5mm (0.2") pin spacing, 9mm body
   pot_9mm: {
     type: 'pot_9mm',
     name: 'Potentiometer 9mm (Alpha)',
+    height: 7,
     pads: [
       { pos: [0, 0], dia: 1.5 },
-      { pos: [2.5, 0], dia: 1.5 },
-      { pos: [5, 0], dia: 1.5 },
+      { pos: [5, 0], dia: 1.5 }, // 5mm spacing (was 2.5mm - incorrect)
+      { pos: [10, 0], dia: 1.5 }, // 5mm spacing
     ],
     holes: [
       { pos: [0, 0], dia: 1.0 },
-      { pos: [2.5, 0], dia: 1.0 },
       { pos: [5, 0], dia: 1.0 },
+      { pos: [10, 0], dia: 1.0 },
     ],
     outline: [
-      [-2, -2],
-      [7, -2],
-      [7, 7],
-      [-2, 7],
+      [-0.5, -4.5],
+      [10.5, -4.5],
+      [10.5, 4.5],
+      [-0.5, 4.5],
     ],
   },
 
+  // 16mm pot: 5mm pin spacing, 16mm body
   pot_16mm: {
     type: 'pot_16mm',
     name: 'Potentiometer 16mm',
+    height: 10,
     pads: [
       { pos: [0, 0], dia: 1.7 },
       { pos: [5, 0], dia: 1.7 },
@@ -1055,84 +1083,97 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
       { pos: [10, 0], dia: 1.2 },
     ],
     outline: [
-      [-3, -3],
-      [13, -3],
-      [13, 13],
-      [-3, 13],
+      [-3, -8],
+      [13, -8],
+      [13, 8],
+      [-3, 8],
     ],
   },
 
+  // Slide pot 45mm travel: 5mm pin spacing
   pot_slide_45mm: {
     type: 'pot_slide_45mm',
     name: 'Slide Potentiometer 45mm',
+    height: 8,
     pads: [
       { pos: [0, 0], dia: 1.5 },
-      { pos: [2.5, 0], dia: 1.5 },
       { pos: [5, 0], dia: 1.5 },
+      { pos: [10, 0], dia: 1.5 },
     ],
     holes: [
       { pos: [0, 0], dia: 1.0 },
-      { pos: [2.5, 0], dia: 1.0 },
       { pos: [5, 0], dia: 1.0 },
+      { pos: [10, 0], dia: 1.0 },
     ],
     outline: [
-      [-5, -3],
-      [10, -3],
-      [10, 42],
-      [-5, 42],
+      [-5, -5],
+      [15, -5],
+      [15, 55],
+      [-5, 55],
     ],
   },
 
   // Encoders
+  // EC11: 2.5mm pitch for encoder pins, 7.5mm between encoder row and mounting/switch
+  // Encoder pins: A, GND, B in a row at 2.5mm pitch
+  // Mounting tabs at 7mm from encoder pins, 12.5mm apart
   encoder_ec11: {
     type: 'encoder_ec11',
     name: 'Rotary Encoder EC11',
+    height: 12,
     pads: [
-      { pos: [0, 0], dia: 1.5 },
-      { pos: [2.5, 0], dia: 1.5 },
-      { pos: [5, 0], dia: 1.5 },
-      { pos: [0, 7], dia: 1.5 },
-      { pos: [5, 7], dia: 1.5 },
+      // Encoder pins (A, GND, B) - 2.5mm pitch
+      { pos: [0, 0], dia: 1.5 }, // A
+      { pos: [2.5, 0], dia: 1.5 }, // GND (common)
+      { pos: [5, 0], dia: 1.5 }, // B
+      // Mounting tabs - 12.5mm apart, 7mm from encoder pins
+      { pos: [-1.25, 7], dia: 2.0 }, // Mount 1
+      { pos: [6.25, 7], dia: 2.0 }, // Mount 2
     ],
     holes: [
       { pos: [0, 0], dia: 1.0 },
       { pos: [2.5, 0], dia: 1.0 },
       { pos: [5, 0], dia: 1.0 },
-      { pos: [0, 7], dia: 1.0 },
-      { pos: [5, 7], dia: 1.0 },
+      { pos: [-1.25, 7], dia: 1.5 }, // Larger mounting holes
+      { pos: [6.25, 7], dia: 1.5 },
     ],
     outline: [
-      [-3, -2],
-      [8, -2],
+      [-3, -6],
+      [8, -6],
       [8, 9],
       [-3, 9],
     ],
   },
 
+  // EC11 with push switch: adds 2 switch pins
   encoder_ec11_switch: {
     type: 'encoder_ec11_switch',
     name: 'Rotary Encoder EC11 w/ Switch',
+    height: 12,
     pads: [
-      { pos: [0, 0], dia: 1.5 },
-      { pos: [2.5, 0], dia: 1.5 },
-      { pos: [5, 0], dia: 1.5 },
-      { pos: [0, 7], dia: 1.5 },
-      { pos: [5, 7], dia: 1.5 },
-      { pos: [-2.5, 3.5], dia: 1.5 },
-      { pos: [7.5, 3.5], dia: 1.5 },
+      // Encoder pins (A, GND, B) - 2.5mm pitch
+      { pos: [0, 0], dia: 1.5 }, // A
+      { pos: [2.5, 0], dia: 1.5 }, // GND (common)
+      { pos: [5, 0], dia: 1.5 }, // B
+      // Mounting tabs
+      { pos: [-1.25, 7], dia: 2.0 }, // Mount 1
+      { pos: [6.25, 7], dia: 2.0 }, // Mount 2
+      // Switch pins - on sides, 2.5mm from center
+      { pos: [-2.5, 3.5], dia: 1.5 }, // SW1
+      { pos: [7.5, 3.5], dia: 1.5 }, // SW2
     ],
     holes: [
       { pos: [0, 0], dia: 1.0 },
       { pos: [2.5, 0], dia: 1.0 },
       { pos: [5, 0], dia: 1.0 },
-      { pos: [0, 7], dia: 1.0 },
-      { pos: [5, 7], dia: 1.0 },
+      { pos: [-1.25, 7], dia: 1.5 },
+      { pos: [6.25, 7], dia: 1.5 },
       { pos: [-2.5, 3.5], dia: 1.0 },
       { pos: [7.5, 3.5], dia: 1.0 },
     ],
     outline: [
-      [-5, -2],
-      [10, -2],
+      [-5, -6],
+      [10, -6],
       [10, 9],
       [-5, 9],
     ],
@@ -1721,62 +1762,68 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
   },
 
   // USB Connectors
+  // USB Type-B: 2.5mm pin spacing (standard for B connector)
   connector_usb_b: {
     type: 'connector_usb_b',
     name: 'USB Type-B Connector',
+    height: 11,
     pads: [
-      { pos: [0, 0], dia: 1.5 },
-      { pos: [2.5, 0], dia: 1.5 },
-      { pos: [5, 0], dia: 1.5 },
-      { pos: [7.5, 0], dia: 1.5 },
+      { pos: [0, 0], dia: 1.5 }, // VBUS
+      { pos: [2.5, 0], dia: 1.5 }, // D-
+      { pos: [5.0, 0], dia: 1.5 }, // D+
+      { pos: [7.5, 0], dia: 1.5 }, // GND
     ],
     holes: [
-      { pos: [0, 0], dia: 1.0 },
-      { pos: [2.5, 0], dia: 1.0 },
-      { pos: [5, 0], dia: 1.0 },
-      { pos: [7.5, 0], dia: 1.0 },
+      { pos: [0, 0], dia: 0.9 },
+      { pos: [2.5, 0], dia: 0.9 },
+      { pos: [5.0, 0], dia: 0.9 },
+      { pos: [7.5, 0], dia: 0.9 },
     ],
     outline: [
       [-3, -2],
       [10.5, -2],
-      [10.5, 14],
-      [-3, 14],
+      [10.5, 16], // USB-B is deeper
+      [-3, 16],
     ],
   },
 
+  // USB Mini-B: 0.8mm pin spacing (SMD typically, but TH breakouts exist)
   connector_usb_mini: {
     type: 'connector_usb_mini',
     name: 'USB Mini-B Connector',
+    height: 4,
     pads: [
-      { pos: [0, 0], dia: 1.2 },
-      { pos: [1.6, 0], dia: 1.2 },
-      { pos: [3.2, 0], dia: 1.2 },
-      { pos: [4.8, 0], dia: 1.2 },
-      { pos: [6.4, 0], dia: 1.2 },
+      { pos: [0, 0], dia: 1.0 }, // VBUS
+      { pos: [0.8, 0], dia: 1.0 }, // D-
+      { pos: [1.6, 0], dia: 1.0 }, // D+
+      { pos: [2.4, 0], dia: 1.0 }, // ID
+      { pos: [3.2, 0], dia: 1.0 }, // GND
     ],
     holes: [
-      { pos: [0, 0], dia: 0.7 },
-      { pos: [1.6, 0], dia: 0.7 },
-      { pos: [3.2, 0], dia: 0.7 },
-      { pos: [4.8, 0], dia: 0.7 },
-      { pos: [6.4, 0], dia: 0.7 },
+      { pos: [0, 0], dia: 0.5 },
+      { pos: [0.8, 0], dia: 0.5 },
+      { pos: [1.6, 0], dia: 0.5 },
+      { pos: [2.4, 0], dia: 0.5 },
+      { pos: [3.2, 0], dia: 0.5 },
     ],
     outline: [
       [-2, -2],
-      [8.4, -2],
-      [8.4, 6],
+      [5.2, -2],
+      [5.2, 6],
       [-2, 6],
     ],
   },
 
+  // USB Type-C breakout module: 2.54mm standard header pitch
   connector_usb_c: {
     type: 'connector_usb_c',
     name: 'USB Type-C Breakout',
+    height: 4,
     pads: [
-      { pos: [0, 0], dia: 1.5 },
-      { pos: [2.54, 0], dia: 1.5 },
-      { pos: [5.08, 0], dia: 1.5 },
-      { pos: [7.62, 0], dia: 1.5 },
+      { pos: [0, 0], dia: 1.7 }, // VBUS
+      { pos: [2.54, 0], dia: 1.7 }, // CC1/D-
+      { pos: [5.08, 0], dia: 1.7 }, // D+
+      { pos: [7.62, 0], dia: 1.7 }, // GND
     ],
     holes: [
       { pos: [0, 0], dia: 1.0 },
@@ -1787,8 +1834,8 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
     outline: [
       [-2, -2],
       [9.62, -2],
-      [9.62, 8],
-      [-2, 8],
+      [9.62, 14], // Module with USB-C receptacle
+      [-2, 14],
     ],
   },
 
@@ -2129,6 +2176,179 @@ export const FOOTPRINTS: Record<string, FootprintDefinition> = {
       [14.7, -2],
       [14.7, 15],
       [-2, 15],
+    ],
+  },
+
+  // Audio DAC/ADC modules (I2S)
+  // PCM5102 breakout: ~22mm × 17mm, 6 pins (VCC, GND, BCK, DIN, LCK, FLT/DEMP/XSMT)
+  audio_dac_pcm5102: {
+    type: 'audio_dac_pcm5102',
+    name: 'PCM5102 I2S Stereo DAC Module',
+    height: 4, // PCB + components height
+    contactHeight: 3,
+    pads: [
+      { pos: [0, 0], dia: 1.7 }, // VCC
+      { pos: [2.54, 0], dia: 1.7 }, // GND
+      { pos: [5.08, 0], dia: 1.7 }, // BCK (bit clock)
+      { pos: [7.62, 0], dia: 1.7 }, // DIN (data in)
+      { pos: [10.16, 0], dia: 1.7 }, // LCK (word clock)
+      { pos: [12.7, 0], dia: 1.7 }, // FMT (format select)
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [2.54, 0], dia: 1.0 },
+      { pos: [5.08, 0], dia: 1.0 },
+      { pos: [7.62, 0], dia: 1.0 },
+      { pos: [10.16, 0], dia: 1.0 },
+      { pos: [12.7, 0], dia: 1.0 },
+    ],
+    outline: [
+      [-3, -3],
+      [15.7, -3],
+      [15.7, 14], // ~17mm depth
+      [-3, 14],
+    ],
+  },
+
+  // MAX98357 breakout: ~18mm × 14mm, 7 pins with screw terminal for speaker
+  audio_dac_max98357: {
+    type: 'audio_dac_max98357',
+    name: 'MAX98357 I2S Amplifier DAC Module',
+    height: 6, // Includes screw terminal height
+    contactHeight: 5,
+    pads: [
+      { pos: [0, 0], dia: 1.7 }, // VIN
+      { pos: [2.54, 0], dia: 1.7 }, // GND
+      { pos: [5.08, 0], dia: 1.7 }, // SD (shutdown)
+      { pos: [7.62, 0], dia: 1.7 }, // GAIN
+      { pos: [10.16, 0], dia: 1.7 }, // DIN
+      { pos: [12.7, 0], dia: 1.7 }, // BCLK
+      { pos: [15.24, 0], dia: 1.7 }, // LRC
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [2.54, 0], dia: 1.0 },
+      { pos: [5.08, 0], dia: 1.0 },
+      { pos: [7.62, 0], dia: 1.0 },
+      { pos: [10.16, 0], dia: 1.0 },
+      { pos: [12.7, 0], dia: 1.0 },
+      { pos: [15.24, 0], dia: 1.0 },
+    ],
+    outline: [
+      [-2, -2],
+      [17.24, -2],
+      [17.24, 12], // ~14mm depth
+      [-2, 12],
+    ],
+  },
+
+  // PCM1808 breakout: ~18mm × 16mm, 8 pins
+  audio_adc_pcm1808: {
+    type: 'audio_adc_pcm1808',
+    name: 'PCM1808 I2S Stereo ADC Module',
+    height: 4,
+    contactHeight: 3,
+    pads: [
+      { pos: [0, 0], dia: 1.7 }, // VCC
+      { pos: [2.54, 0], dia: 1.7 }, // GND
+      { pos: [5.08, 0], dia: 1.7 }, // BCK
+      { pos: [7.62, 0], dia: 1.7 }, // OUT (DOUT)
+      { pos: [10.16, 0], dia: 1.7 }, // LCK
+      { pos: [12.7, 0], dia: 1.7 }, // SCK (system clock)
+      { pos: [15.24, 0], dia: 1.7 }, // FMT
+      { pos: [17.78, 0], dia: 1.7 }, // MD (mode)
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [2.54, 0], dia: 1.0 },
+      { pos: [5.08, 0], dia: 1.0 },
+      { pos: [7.62, 0], dia: 1.0 },
+      { pos: [10.16, 0], dia: 1.0 },
+      { pos: [12.7, 0], dia: 1.0 },
+      { pos: [15.24, 0], dia: 1.0 },
+      { pos: [17.78, 0], dia: 1.0 },
+    ],
+    outline: [
+      [-2, -2],
+      [19.78, -2],
+      [19.78, 14], // ~16mm depth
+      [-2, 14],
+    ],
+  },
+
+  // ES8388 codec breakout: ~30mm × 20mm, 10 pins (full codec with ADC+DAC)
+  audio_codec_es8388: {
+    type: 'audio_codec_es8388',
+    name: 'ES8388 Audio Codec Module (I2S)',
+    height: 5,
+    contactHeight: 4,
+    pads: [
+      { pos: [0, 0], dia: 1.7 }, // VCC
+      { pos: [2.54, 0], dia: 1.7 }, // GND
+      { pos: [5.08, 0], dia: 1.7 }, // MCLK (master clock)
+      { pos: [7.62, 0], dia: 1.7 }, // SCLK (serial clock)
+      { pos: [10.16, 0], dia: 1.7 }, // LRCK (word select)
+      { pos: [12.7, 0], dia: 1.7 }, // DSDIN (DAC serial data in)
+      { pos: [15.24, 0], dia: 1.7 }, // ASDOUT (ADC serial data out)
+      { pos: [17.78, 0], dia: 1.7 }, // SDA (I2C data)
+      { pos: [20.32, 0], dia: 1.7 }, // SCL (I2C clock)
+      { pos: [22.86, 0], dia: 1.7 }, // GND
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [2.54, 0], dia: 1.0 },
+      { pos: [5.08, 0], dia: 1.0 },
+      { pos: [7.62, 0], dia: 1.0 },
+      { pos: [10.16, 0], dia: 1.0 },
+      { pos: [12.7, 0], dia: 1.0 },
+      { pos: [15.24, 0], dia: 1.0 },
+      { pos: [17.78, 0], dia: 1.0 },
+      { pos: [20.32, 0], dia: 1.0 },
+      { pos: [22.86, 0], dia: 1.0 },
+    ],
+    outline: [
+      [-3, -3],
+      [25.86, -3],
+      [25.86, 17], // ~20mm depth
+      [-3, 17],
+    ],
+  },
+
+  // WM8960 codec breakout: ~32mm × 22mm, 10 pins (full codec with headphone amp)
+  audio_codec_wm8960: {
+    type: 'audio_codec_wm8960',
+    name: 'WM8960 Audio Codec Module (I2S)',
+    height: 5,
+    contactHeight: 4,
+    pads: [
+      { pos: [0, 0], dia: 1.7 }, // VCC
+      { pos: [2.54, 0], dia: 1.7 }, // GND
+      { pos: [5.08, 0], dia: 1.7 }, // MCLK
+      { pos: [7.62, 0], dia: 1.7 }, // BCLK
+      { pos: [10.16, 0], dia: 1.7 }, // DACLRC
+      { pos: [12.7, 0], dia: 1.7 }, // DACDAT
+      { pos: [15.24, 0], dia: 1.7 }, // ADCDAT
+      { pos: [17.78, 0], dia: 1.7 }, // SDA
+      { pos: [20.32, 0], dia: 1.7 }, // SCL
+      { pos: [22.86, 0], dia: 1.7 }, // GND
+    ],
+    holes: [
+      { pos: [0, 0], dia: 1.0 },
+      { pos: [2.54, 0], dia: 1.0 },
+      { pos: [5.08, 0], dia: 1.0 },
+      { pos: [7.62, 0], dia: 1.0 },
+      { pos: [10.16, 0], dia: 1.0 },
+      { pos: [12.7, 0], dia: 1.0 },
+      { pos: [15.24, 0], dia: 1.0 },
+      { pos: [17.78, 0], dia: 1.0 },
+      { pos: [20.32, 0], dia: 1.0 },
+      { pos: [22.86, 0], dia: 1.0 },
+    ],
+    outline: [
+      [-3, -3],
+      [25.86, -3],
+      [25.86, 19], // ~22mm depth
+      [-3, 19],
     ],
   },
 

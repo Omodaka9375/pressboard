@@ -1578,28 +1578,31 @@ const Scene = ({ clipEnabled, clipPosition, explodedView, explodeOffset, showLid
       <directionalLight position={[-50, -50, 50]} intensity={0.3} />
 
       <Suspense fallback={<LoadingSpinner />}>
-        {/* Board layer */}
-        <group position={[0, 0, boardZ]}>
-          <BoardMesh clippingPlane={clipEnabled ? clippingPlane : null} />
-        </group>
-
-        {/* Routes layer */}
-        <group position={[0, 0, routeZ]}>
-          <RouteLines />
-          <ViaMarkers />
-        </group>
-
-        {/* Components layer */}
-        <group position={[0, 0, componentZ]}>
-          <ComponentMarkers />
-        </group>
-
-        {/* Lid layer */}
-        {showLid && (
-          <group position={[0, 0, lidZ]}>
-            <LidMesh />
+        {/* Flip Y-axis to match 2D canvas coordinate system (Y-down in 2D, Y-up in 3D) */}
+        <group scale={[1, -1, 1]}>
+          {/* Board layer */}
+          <group position={[0, 0, boardZ]}>
+            <BoardMesh clippingPlane={clipEnabled ? clippingPlane : null} />
           </group>
-        )}
+
+          {/* Routes layer */}
+          <group position={[0, 0, routeZ]}>
+            <RouteLines />
+            <ViaMarkers />
+          </group>
+
+          {/* Components layer */}
+          <group position={[0, 0, componentZ]}>
+            <ComponentMarkers />
+          </group>
+
+          {/* Lid layer */}
+          {showLid && (
+            <group position={[0, 0, lidZ]}>
+              <LidMesh />
+            </group>
+          )}
+        </group>
       </Suspense>
 
       {clipEnabled && <ClippingPlane position={clipPosition} />}

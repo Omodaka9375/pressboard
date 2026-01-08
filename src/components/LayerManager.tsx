@@ -63,6 +63,8 @@ const LayerManager = () => {
     toggleLayer,
     showComponentLabels,
     setShowComponentLabels,
+    showComponentPinout,
+    setShowComponentPinout,
     showDRCMarkers,
     setShowDRCMarkers,
   } = useViewSettingsStore();
@@ -164,6 +166,23 @@ const LayerManager = () => {
             onChange={(e) => setShowComponentLabels(e.target.checked)}
           />
           Component Labels
+        </label>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '11px',
+            cursor: 'pointer',
+            marginBottom: '4px',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={showComponentPinout}
+            onChange={(e) => setShowComponentPinout(e.target.checked)}
+          />
+          Pin Names
         </label>
         <label
           style={{

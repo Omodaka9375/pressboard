@@ -4,6 +4,7 @@ import { useViewSettingsStore } from '../stores/viewSettingsStore';
 import { useThemeStore } from '../stores/themeStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import { getFootprint } from '../data/footprints';
+import { getPinInfo } from '../lib/assembly/connectionDetector';
 import { manhattanRoute, splineRoute } from '../lib/routing/routingUtils';
 import type { Vec2, Component, DRCViolation, Annotation, Route } from '../types';
 
@@ -45,7 +46,8 @@ const CanvasView = () => {
     setAutoRouting,
     autoRoute,
   } = useProjectStore();
-  const { visibility, opacity, showDRCMarkers, showComponentLabels } = useViewSettingsStore();
+  const { visibility, opacity, showDRCMarkers, showComponentLabels, showComponentPinout } =
+    useViewSettingsStore();
   const { theme } = useThemeStore();
   const { showNotification } = useNotificationStore();
   const [draggedComponent, setDraggedComponent] = useState<string | null>(null);
@@ -230,6 +232,7 @@ const CanvasView = () => {
           component,
           component.id === selectedComponent,
           showComponentLabels,
+          showComponentPinout,
           theme
         );
       });
@@ -273,6 +276,7 @@ const CanvasView = () => {
     opacity,
     showDRCMarkers,
     showComponentLabels,
+    showComponentPinout,
     theme,
     canvasSize,
   ]);
@@ -806,6 +810,7 @@ const drawComponent = (
   component: Component,
   isSelected: boolean,
   showLabel = true,
+  showPinout = true,
   theme: 'light' | 'dark' = 'light'
 ) => {
   const { pos, type, rotation } = component;
@@ -841,7 +846,7 @@ const drawComponent = (
 
   // Draw pads
   if (footprint?.pads) {
-    footprint.pads.forEach((pad) => {
+    footprint.pads.forEach((pad, padIdx) => {
       const radius = (pad.dia ?? pad.width ?? 2) / 2;
       ctx.fillStyle = '#b87333';
       ctx.beginPath();
@@ -851,6 +856,197 @@ const drawComponent = (
       ctx.lineWidth = 0.5;
       ctx.stroke();
     });
+
+    // Draw pin names with leader lines (after all pads so lines don't obscure)
+    if (showPinout) {
+      // Collect pin label info
+      type PinLabel = {
+        padPos: Vec2;
+        name: string;
+        radius: number;
+      };
+      const labels: PinLabel[] = [];
+
+      footprint.pads.forEach((pad, padIdx) => {
+        const pinInfo = getPinInfo(type, padIdx);
+        if (pinInfo && pinInfo.name) {
+          const radius = (pad.dia ?? pad.width ?? 2) / 2;
+          labels.push({
+            padPos: pad.pos,
+            name: pinInfo.name,
+            radius,
+          });
+        }
+      });
+
+      if (labels.length > 0) {
+        // Calculate component bounds for label placement
+        const padXs = labels.map((l) => l.padPos[0]);
+        const padYs = labels.map((l) => l.padPos[1]);
+        const centerX = (Math.min(...padXs) + Math.max(...padXs)) / 2;
+        const centerY = (Math.min(...padYs) + Math.max(...padYs)) / 2;
+
+        // Config for label layout
+        const labelHeight = 7;
+        const labelPadding = 2;
+        const leaderLength = 8;
+        const leaderExtension = 4; // Extra horizontal extension for leader
+
+        ctx.font = '5px sans-serif';
+
+        // Calculate label positions avoiding overlap
+        type PositionedLabel = PinLabel & {
+          labelX: number;
+          labelY: number;
+          leaderEndX: number;
+          leaderEndY: number;
+          textAlign: CanvasTextAlign;
+        };
+
+        const positioned: PositionedLabel[] = [];
+
+        labels.forEach((label, idx) => {
+          // Determine which side of component this pad is on
+          const dx = label.padPos[0] - centerX;
+          const dy = label.padPos[1] - centerY;
+
+          // Choose primary direction based on position relative to center
+          let labelX: number;
+          let labelY: number;
+          let leaderEndX: number;
+          let leaderEndY: number;
+          let textAlign: CanvasTextAlign;
+
+          // Place labels on outside edges with staggered offsets
+          if (Math.abs(dx) > Math.abs(dy)) {
+            // Pad is more horizontal - place label left or right
+            const side = dx >= 0 ? 1 : -1;
+            leaderEndX = label.padPos[0] + side * (label.radius + leaderLength);
+            leaderEndY = label.padPos[1];
+            labelX = leaderEndX + side * leaderExtension;
+            labelY = leaderEndY;
+            textAlign = side > 0 ? 'left' : 'right';
+          } else {
+            // Pad is more vertical - place label above or below
+            const side = dy >= 0 ? 1 : -1;
+            leaderEndX = label.padPos[0];
+            leaderEndY = label.padPos[1] + side * (label.radius + leaderLength);
+            labelX = leaderEndX;
+            labelY = leaderEndY + side * 2;
+            textAlign = 'center';
+          }
+
+          // Check for overlaps with existing labels and adjust
+          const textWidth = ctx.measureText(label.name).width;
+          let attempts = 0;
+          const maxAttempts = 5;
+
+          while (attempts < maxAttempts) {
+            let hasOverlap = false;
+            for (const existing of positioned) {
+              const existingWidth = ctx.measureText(existing.name).width;
+              // Calculate bounding boxes
+              const newLeft =
+                textAlign === 'left'
+                  ? labelX
+                  : textAlign === 'right'
+                    ? labelX - textWidth
+                    : labelX - textWidth / 2;
+              const newRight = newLeft + textWidth;
+              const newTop = labelY - labelHeight / 2;
+              const newBottom = labelY + labelHeight / 2;
+
+              const existLeft =
+                existing.textAlign === 'left'
+                  ? existing.labelX
+                  : existing.textAlign === 'right'
+                    ? existing.labelX - existingWidth
+                    : existing.labelX - existingWidth / 2;
+              const existRight = existLeft + existingWidth;
+              const existTop = existing.labelY - labelHeight / 2;
+              const existBottom = existing.labelY + labelHeight / 2;
+
+              // Check overlap with padding
+              if (
+                newLeft < existRight + labelPadding &&
+                newRight > existLeft - labelPadding &&
+                newTop < existBottom + labelPadding &&
+                newBottom > existTop - labelPadding
+              ) {
+                hasOverlap = true;
+                // Shift based on orientation
+                if (textAlign === 'center') {
+                  // Vertical labels - shift down
+                  labelY += labelHeight + labelPadding;
+                  leaderEndY += labelHeight + labelPadding;
+                } else {
+                  // Horizontal labels - shift down
+                  labelY += labelHeight + labelPadding;
+                  leaderEndY += (labelHeight + labelPadding) * 0.5;
+                }
+                break;
+              }
+            }
+            if (!hasOverlap) break;
+            attempts++;
+          }
+
+          positioned.push({
+            ...label,
+            labelX,
+            labelY,
+            leaderEndX,
+            leaderEndY,
+            textAlign,
+          });
+        });
+
+        // Draw all labels with leader lines
+        positioned.forEach((label) => {
+          ctx.save();
+          // Counter-rotate to keep text horizontal
+          ctx.translate(label.padPos[0], label.padPos[1]);
+          ctx.rotate((-rotation * Math.PI) / 180);
+
+          // Calculate relative positions after rotation
+          const relLeaderEndX = label.leaderEndX - label.padPos[0];
+          const relLeaderEndY = label.leaderEndY - label.padPos[1];
+          const relLabelX = label.labelX - label.padPos[0];
+          const relLabelY = label.labelY - label.padPos[1];
+
+          // Draw leader line
+          ctx.strokeStyle = theme === 'dark' ? 'rgba(150,200,255,0.5)' : 'rgba(0,50,100,0.4)';
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(relLeaderEndX, relLeaderEndY);
+          ctx.lineTo(relLabelX, relLabelY);
+          ctx.stroke();
+
+          // Draw label background
+          const textWidth = ctx.measureText(label.name).width;
+          let bgX: number;
+          if (label.textAlign === 'left') {
+            bgX = relLabelX - 1;
+          } else if (label.textAlign === 'right') {
+            bgX = relLabelX - textWidth - 1;
+          } else {
+            bgX = relLabelX - textWidth / 2 - 1;
+          }
+          ctx.fillStyle = theme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.85)';
+          ctx.fillRect(bgX, relLabelY - 3.5, textWidth + 2, 7);
+
+          // Draw pin name text
+          ctx.font = '5px sans-serif';
+          ctx.textAlign = label.textAlign;
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = theme === 'dark' ? '#adf' : '#036';
+          ctx.fillText(label.name, relLabelX, relLabelY);
+
+          ctx.restore();
+        });
+      }
+    }
   }
 
   // Draw holes

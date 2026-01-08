@@ -37,6 +37,7 @@ type ViewSettingsState = {
   showPrintabilityMeter: boolean;
   showDRCMarkers: boolean;
   showComponentLabels: boolean;
+  showComponentPinout: boolean;
 
   // Actions
   setLayerVisibility: (layer: keyof LayerVisibility, visible: boolean) => void;
@@ -46,6 +47,7 @@ type ViewSettingsState = {
   setShowPrintabilityMeter: (show: boolean) => void;
   setShowDRCMarkers: (show: boolean) => void;
   setShowComponentLabels: (show: boolean) => void;
+  setShowComponentPinout: (show: boolean) => void;
   resetToDefaults: () => void;
 };
 
@@ -83,6 +85,7 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
       showPrintabilityMeter: true,
       showDRCMarkers: true,
       showComponentLabels: true,
+      showComponentPinout: true,
 
       setLayerVisibility: (layer, visible) =>
         set((state) => ({
@@ -107,6 +110,7 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
       setShowPrintabilityMeter: (show) => set({ showPrintabilityMeter: show }),
       setShowDRCMarkers: (show) => set({ showDRCMarkers: show }),
       setShowComponentLabels: (show) => set({ showComponentLabels: show }),
+      setShowComponentPinout: (show) => set({ showComponentPinout: show }),
 
       resetToDefaults: () =>
         set({
@@ -116,6 +120,7 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
           showPrintabilityMeter: true,
           showDRCMarkers: true,
           showComponentLabels: true,
+          showComponentPinout: true,
         }),
     }),
     {

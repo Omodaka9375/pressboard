@@ -1004,6 +1004,74 @@ export const PINOUT_DATABASE: ComponentPinout[] = [
       { index: 5, role: 'signal', name: 'VOUT' },
     ],
   },
+
+  // Audio DAC/ADC modules (I2S)
+  {
+    type: 'audio_dac_pcm5102',
+    pins: [
+      { index: 0, role: 'vcc', name: 'VCC', voltage: VCC_VOLTAGE },
+      { index: 1, role: 'gnd', name: 'GND', voltage: GND_VOLTAGE },
+      { index: 2, role: 'signal', name: 'BCK' }, // Bit clock
+      { index: 3, role: 'signal', name: 'DIN' }, // Data in
+      { index: 4, role: 'signal', name: 'LCK' }, // Word clock (LRCK)
+      { index: 5, role: 'signal', name: 'FMT' }, // Format select
+    ],
+  },
+  {
+    type: 'audio_dac_max98357',
+    pins: [
+      { index: 0, role: 'vcc', name: 'VIN', voltage: VCC_VOLTAGE },
+      { index: 1, role: 'gnd', name: 'GND', voltage: GND_VOLTAGE },
+      { index: 2, role: 'signal', name: 'SD' }, // Shutdown
+      { index: 3, role: 'signal', name: 'GAIN' }, // Gain select
+      { index: 4, role: 'signal', name: 'DIN' }, // Data in
+      { index: 5, role: 'signal', name: 'BCLK' }, // Bit clock
+      { index: 6, role: 'signal', name: 'LRC' }, // Word clock
+    ],
+  },
+  {
+    type: 'audio_adc_pcm1808',
+    pins: [
+      { index: 0, role: 'vcc', name: 'VCC', voltage: VCC_VOLTAGE },
+      { index: 1, role: 'gnd', name: 'GND', voltage: GND_VOLTAGE },
+      { index: 2, role: 'signal', name: 'BCK' }, // Bit clock
+      { index: 3, role: 'signal', name: 'OUT' }, // Data out
+      { index: 4, role: 'signal', name: 'LCK' }, // Word clock
+      { index: 5, role: 'signal', name: 'SCK' }, // System clock
+      { index: 6, role: 'signal', name: 'FMT' }, // Format select
+      { index: 7, role: 'signal', name: 'MD' }, // Mode select
+    ],
+  },
+  {
+    type: 'audio_codec_es8388',
+    pins: [
+      { index: 0, role: 'vcc', name: 'VCC', voltage: VCC_VOLTAGE },
+      { index: 1, role: 'gnd', name: 'GND', voltage: GND_VOLTAGE },
+      { index: 2, role: 'signal', name: 'MCLK' },
+      { index: 3, role: 'signal', name: 'SCLK' },
+      { index: 4, role: 'signal', name: 'LRCK' },
+      { index: 5, role: 'signal', name: 'DSDIN' },
+      { index: 6, role: 'signal', name: 'ASDOUT' },
+      { index: 7, role: 'signal', name: 'SDA' },
+      { index: 8, role: 'signal', name: 'SCL' },
+      { index: 9, role: 'gnd', name: 'GND2', voltage: GND_VOLTAGE },
+    ],
+  },
+  {
+    type: 'audio_codec_wm8960',
+    pins: [
+      { index: 0, role: 'vcc', name: 'VCC', voltage: VCC_VOLTAGE },
+      { index: 1, role: 'gnd', name: 'GND', voltage: GND_VOLTAGE },
+      { index: 2, role: 'signal', name: 'MCLK' },
+      { index: 3, role: 'signal', name: 'BCLK' },
+      { index: 4, role: 'signal', name: 'DACLRC' },
+      { index: 5, role: 'signal', name: 'DACDAT' },
+      { index: 6, role: 'signal', name: 'ADCDAT' },
+      { index: 7, role: 'signal', name: 'SDA' },
+      { index: 8, role: 'signal', name: 'SCL' },
+      { index: 9, role: 'gnd', name: 'GND2', voltage: GND_VOLTAGE },
+    ],
+  },
   {
     type: 'pad_connector_8',
     pins: [
@@ -1357,15 +1425,14 @@ export const PINOUT_DATABASE: ComponentPinout[] = [
       { index: 4, role: 'gnd', name: 'GND', voltage: GND_VOLTAGE },
     ],
   },
+  // USB-C breakout: 4-pin simplified (VBUS, D-, D+, GND)
   {
     type: 'connector_usb_c',
     pins: [
-      { index: 0, role: 'gnd', name: 'GND', voltage: GND_VOLTAGE },
-      { index: 1, role: 'vcc', name: 'VBUS', voltage: VCC_VOLTAGE },
-      { index: 2, role: 'signal', name: 'CC1' },
-      { index: 3, role: 'signal', name: 'CC2' },
-      { index: 4, role: 'signal', name: 'D+' },
-      { index: 5, role: 'signal', name: 'D-' },
+      { index: 0, role: 'vcc', name: 'VBUS', voltage: VCC_VOLTAGE },
+      { index: 1, role: 'signal', name: 'D-' },
+      { index: 2, role: 'signal', name: 'D+' },
+      { index: 3, role: 'gnd', name: 'GND', voltage: GND_VOLTAGE },
     ],
   },
 
@@ -1391,22 +1458,28 @@ export const PINOUT_DATABASE: ComponentPinout[] = [
   },
 
   // === ENCODERS ===
+  // EC11: 5 pads - A, GND, B (encoder) + 2 mounting tabs
   {
     type: 'encoder_ec11',
     pins: [
       { index: 0, role: 'signal', name: 'A' },
       { index: 1, role: 'gnd', name: 'C', voltage: GND_VOLTAGE },
       { index: 2, role: 'signal', name: 'B' },
+      { index: 3, role: 'nc', name: 'Mount1' }, // Mounting tab
+      { index: 4, role: 'nc', name: 'Mount2' }, // Mounting tab
     ],
   },
+  // EC11 with switch: 7 pads - A, GND, B + 2 mounts + 2 switch
   {
     type: 'encoder_ec11_switch',
     pins: [
       { index: 0, role: 'signal', name: 'A' },
       { index: 1, role: 'gnd', name: 'C', voltage: GND_VOLTAGE },
       { index: 2, role: 'signal', name: 'B' },
-      { index: 3, role: 'signal', name: 'SW1' },
-      { index: 4, role: 'signal', name: 'SW2' },
+      { index: 3, role: 'nc', name: 'Mount1' }, // Mounting tab
+      { index: 4, role: 'nc', name: 'Mount2' }, // Mounting tab
+      { index: 5, role: 'signal', name: 'SW1' },
+      { index: 6, role: 'signal', name: 'SW2' },
     ],
   },
 

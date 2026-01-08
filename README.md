@@ -11,6 +11,7 @@
 ### User Interface
 - Responsive three‑panel layout with component library, design canvas, and inspector panel
 - Real‑time 3D preview with orbit controls, section plane, and exploded view
+- Toggleable pin name labels with smart leader lines and overlap avoidance
 - Dark mode, keyboard shortcuts, and built‑in tutorials for ease of use
 
 ### Board Design
