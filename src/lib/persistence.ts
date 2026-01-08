@@ -3,6 +3,11 @@ import { isTauri, saveFileNative, openFileNative } from './tauri';
 
 const STORAGE_KEY = 'diypcb_project';
 
+/** Custom file extension for PressBoard projects (JSON format inside) */
+const FILE_EXTENSION = 'pboard';
+const FILE_TYPE_NAME = 'PressBoard Project';
+const FILE_MIME_TYPE = 'application/x-pressboard';
+
 /**
  * Save project to localStorage
  */
@@ -38,16 +43,17 @@ export const clearProject = (): void => {
 };
 
 /**
- * Download/Save project as JSON file (uses native dialog in Tauri)
+ * Download/Save project as .pboard file (JSON inside)
  */
 export const downloadProjectJSON = async (project: Project): Promise<void> => {
   const json = JSON.stringify(project, null, 2);
-  const filename = `${project.name.replace(/\s+/g, '_')}.json`;
+  const filename = `${project.name.replace(/\s+/g, '_')}.${FILE_EXTENSION}`;
 
   // Use native file dialog in Tauri
   if (isTauri()) {
     const saved = await saveFileNative(filename, json, [
-      { name: 'PressBoard Project', extensions: ['json'] },
+      { name: FILE_TYPE_NAME, extensions: [FILE_EXTENSION] },
+      { name: 'JSON Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] },
     ]);
     if (!saved) {
@@ -57,7 +63,7 @@ export const downloadProjectJSON = async (project: Project): Promise<void> => {
   }
 
   // Fallback to browser download
-  const blob = new Blob([json], { type: 'application/json' });
+  const blob = new Blob([json], { type: FILE_MIME_TYPE });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -101,7 +107,8 @@ export const openProjectWithNativeDialog = async (): Promise<Project | null> => 
 
   try {
     const json = await openFileNative([
-      { name: 'PressBoard Project', extensions: ['json'] },
+      { name: FILE_TYPE_NAME, extensions: [FILE_EXTENSION] },
+      { name: 'JSON Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] },
     ]);
 
@@ -114,3 +121,6 @@ export const openProjectWithNativeDialog = async (): Promise<Project | null> => 
     throw new Error('Invalid project file');
   }
 };
+
+/** Get the file extension for PressBoard projects */
+export const getProjectFileExtension = (): string => FILE_EXTENSION;

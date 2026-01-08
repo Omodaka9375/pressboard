@@ -38,6 +38,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "fileAssociations": [
+      {
+        "ext": ["pboard"],
+        "name": "PressBoard Project",
+        "description": "PressBoard PCB Design Project",
+        "role": "Editor",
+        "mimeType": "application/x-pressboard",
+        "icon": "icons/icon.ico"
+      }
+    ],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",

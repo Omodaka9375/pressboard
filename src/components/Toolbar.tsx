@@ -163,7 +163,7 @@ const Toolbar = () => {
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept=".json"
+        accept=".pboard,.json"
         style={{ display: 'none' }}
       />
 
@@ -174,9 +174,9 @@ const Toolbar = () => {
         </button>
         <button
           onClick={() => downloadProjectJSON(project)}
-          title="Save your project as a JSON file"
+          title="Save your project as a .pboard file"
         >
-          💾 Save Project
+          💾 Save Project (.pboard)
         </button>
         <button onClick={handleLoadProject} title="Load a previously saved project">
           📂 Open Project
